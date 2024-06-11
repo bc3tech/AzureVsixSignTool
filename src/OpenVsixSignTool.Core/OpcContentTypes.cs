@@ -70,7 +70,7 @@
             this.IsReadOnly = isReadOnly;
             IEnumerable<XElement> defaults = document.Root.Elements(_opcContentTypeNamespace + "Default");
             IEnumerable<XElement> overrides = document.Root.Elements(_opcContentTypeNamespace + "Override");
-            foreach(XElement @default in defaults)
+            foreach (XElement @default in defaults)
             {
                 ProcessElement(OpcContentTypeMode.Default, @default);
             }
@@ -89,7 +89,7 @@
         {
             XName TranslateToElementName(OpcContentTypeMode mode)
             {
-                switch(mode)
+                switch (mode)
                 {
                     case OpcContentTypeMode.Default:
                         return _opcContentTypeNamespace + "Default";
@@ -102,7 +102,7 @@
 
             var document = new XDocument();
             var root = new XElement(_opcContentTypeNamespace + "Types");
-            foreach(OpcContentType contentType in _contentTypes)
+            foreach (OpcContentType contentType in _contentTypes)
             {
                 var element = new XElement(TranslateToElementName(contentType.Mode));
                 element.SetAttributeValue("Extension", contentType.Extension);
@@ -121,7 +121,15 @@
 
         private void ProcessElement(OpcContentTypeMode mode, XElement element)
         {
-            _contentTypes.Add(new OpcContentType(element.Attribute("Extension").Value, element.Attribute("ContentType").Value, mode));
+            XAttribute contentTypeAttribute = element.Attribute("ContentType");
+            if (contentTypeAttribute != null)
+            {
+                XAttribute extensionAttribute = element.Attribute("Extension");
+                if (extensionAttribute != null)
+                {
+                    _contentTypes.Add(new OpcContentType(extensionAttribute.Value, contentTypeAttribute.Value, mode));
+                }
+            }
         }
 
         /// <summary>
