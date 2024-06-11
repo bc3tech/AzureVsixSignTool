@@ -1,8 +1,9 @@
-﻿using System;
-using Xunit;
-
-namespace OpenVsixSignTool.Core.Tests
+﻿namespace OpenVsixSignTool.Core.Tests
 {
+    using System;
+
+    using Xunit;
+
     public class UriHelpersTests
     {
         [Theory]

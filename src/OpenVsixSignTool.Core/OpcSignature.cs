@@ -1,8 +1,8 @@
-using System;
-using System.Linq;
-
 namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Linq;
+
     /// <summary>
     /// Represents an OPC signature.
     /// </summary>
@@ -35,9 +35,9 @@ namespace OpenVsixSignTool.Core
             {
                 throw new InvalidOperationException("Cannot timestamp a signature that has been removed.");
             }
+
             return new OpcPackageTimestampBuilder(_signaturePart);
         }
-
 
         /// <summary>
         /// Removes the signature from the package.
@@ -48,8 +48,9 @@ namespace OpenVsixSignTool.Core
             {
                 return;
             }
+
             _detached = true;
-            var originFileRelationship = _signaturePart.Package.Relationships.FirstOrDefault(r => r.Type.Equals(OpcKnownUris.DigitalSignatureOrigin));
+            OpcRelationship originFileRelationship = _signaturePart.Package.Relationships.FirstOrDefault(r => r.Type.Equals(OpcKnownUris.DigitalSignatureOrigin));
             if (originFileRelationship == null)
             {
                 //this shouldn't ever happen. This means we have a signature instance but no metadata connecting it to the package.
@@ -57,7 +58,8 @@ namespace OpenVsixSignTool.Core
                 _signaturePart.Package.RemovePart(_signaturePart);
                 return;
             }
-            var originFile = _signaturePart.Package.GetPart(originFileRelationship.Target);
+
+            OpcPart originFile = _signaturePart.Package.GetPart(originFileRelationship.Target);
             if (originFile == null)
             {
                 //This shouldn't happen either. The package has a relationship to a non-existing origin file. Clean up the
@@ -66,6 +68,7 @@ namespace OpenVsixSignTool.Core
                 _signaturePart.Package.Relationships.Remove(originFileRelationship);
                 return;
             }
+
             var signatureRelationships = originFile.Relationships.Where(
                 r => r.Target == _signaturePart.Uri.ToQualifiedUri() &&
                      r.Type == OpcKnownUris.DigitalSignatureSignature
@@ -85,7 +88,7 @@ namespace OpenVsixSignTool.Core
             //with the same type, but if it did happen, we remove all of them.
 
             //Remove relationships to this signature.
-            foreach (var signatureRelationship in signatureRelationships)
+            foreach (OpcRelationship signatureRelationship in signatureRelationships)
             {
                 originFile.Relationships.Remove(signatureRelationship);
             }
@@ -96,6 +99,7 @@ namespace OpenVsixSignTool.Core
                 _signaturePart.Package.RemovePart(originFile);
                 _signaturePart.Package.Relationships.Remove(originFileRelationship);
             }
+
             _signaturePart.Package.RemovePart(_signaturePart);
         }
     }

@@ -1,9 +1,8 @@
-﻿using System;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
 
     public sealed class CertificateSignConfigurationSet
     {
@@ -14,10 +13,11 @@ namespace OpenVsixSignTool.Core
         public bool Validate()
         {
             // Logging candidate.
-            if (SigningCertificate?.HasPrivateKey != true)
+            if (this.SigningCertificate?.HasPrivateKey != true)
             {
                 return false;
             }
+
             return true;
         }
     }

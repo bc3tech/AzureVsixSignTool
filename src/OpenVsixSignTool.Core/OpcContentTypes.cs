@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Xml.Linq;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Collections;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Xml.Linq;
+
     /// <summary>
     /// Represents the mode of a content type.
     /// </summary>
@@ -51,9 +51,9 @@ namespace OpenVsixSignTool.Core
         /// <param name="mode">The mode within the content type.</param>
         public OpcContentType(string extension, string contentType, OpcContentTypeMode mode)
         {
-            Extension = extension;
-            ContentType = contentType;
-            Mode = mode;
+            this.Extension = extension;
+            this.ContentType = contentType;
+            this.Mode = mode;
         }
     }
 
@@ -67,14 +67,15 @@ namespace OpenVsixSignTool.Core
 
         internal OpcContentTypes(XDocument document, bool isReadOnly)
         {
-            IsReadOnly = isReadOnly;
-            var defaults = document.Root.Elements(_opcContentTypeNamespace + "Default");
-            var overrides = document.Root.Elements(_opcContentTypeNamespace + "Override");
-            foreach(var @default in defaults)
+            this.IsReadOnly = isReadOnly;
+            IEnumerable<XElement> defaults = document.Root.Elements(_opcContentTypeNamespace + "Default");
+            IEnumerable<XElement> overrides = document.Root.Elements(_opcContentTypeNamespace + "Override");
+            foreach(XElement @default in defaults)
             {
                 ProcessElement(OpcContentTypeMode.Default, @default);
             }
-            foreach (var @override in overrides)
+
+            foreach (XElement @override in overrides)
             {
                 ProcessElement(OpcContentTypeMode.Override, @override);
             }
@@ -101,20 +102,21 @@ namespace OpenVsixSignTool.Core
 
             var document = new XDocument();
             var root = new XElement(_opcContentTypeNamespace + "Types");
-            foreach(var contentType in _contentTypes)
+            foreach(OpcContentType contentType in _contentTypes)
             {
                 var element = new XElement(TranslateToElementName(contentType.Mode));
                 element.SetAttributeValue("Extension", contentType.Extension);
                 element.SetAttributeValue("ContentType", contentType.ContentType);
                 root.Add(element);
             }
+
             document.Add(root);
             return document;
         }
 
         internal OpcContentTypes(bool isReadOnly)
         {
-            IsReadOnly = isReadOnly;
+            this.IsReadOnly = isReadOnly;
         }
 
         private void ProcessElement(OpcContentTypeMode mode, XElement element)
@@ -133,11 +135,10 @@ namespace OpenVsixSignTool.Core
             set
             {
                 AssertNotReadOnly();
-                IsDirty = true;
+                this.IsDirty = true;
                 _contentTypes[index] = value;
             }
         }
-
 
         /// <summary>
         /// Gets the number of content types.
@@ -153,7 +154,7 @@ namespace OpenVsixSignTool.Core
         public void Add(OpcContentType item)
         {
             AssertNotReadOnly();
-            IsDirty = true;
+            this.IsDirty = true;
             _contentTypes.Add(item);
         }
 
@@ -163,7 +164,7 @@ namespace OpenVsixSignTool.Core
         public void Clear()
         {
             AssertNotReadOnly();
-            IsDirty = true;
+            this.IsDirty = true;
             _contentTypes.Clear();
         }
 
@@ -178,20 +179,20 @@ namespace OpenVsixSignTool.Core
         public void Insert(int index, OpcContentType item)
         {
             AssertNotReadOnly();
-            IsDirty = true;
+            this.IsDirty = true;
             _contentTypes.Insert(index, item);
         }
 
         public bool Remove(OpcContentType item)
         {
             AssertNotReadOnly();
-            return IsDirty = _contentTypes.Remove(item);
+            return this.IsDirty = _contentTypes.Remove(item);
         }
 
         public void RemoveAt(int index)
         {
             AssertNotReadOnly();
-            IsDirty = true;
+            this.IsDirty = true;
             _contentTypes.RemoveAt(index);
         }
 
@@ -201,7 +202,7 @@ namespace OpenVsixSignTool.Core
 
         private void AssertNotReadOnly()
         {
-            if (IsReadOnly)
+            if (this.IsReadOnly)
             {
                 throw new InvalidOperationException("Cannot update content types in a read only package. Please open the package in write mode.");
             }

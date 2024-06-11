@@ -1,19 +1,18 @@
-﻿using System;
-using System.IO;
-using System.Security.Cryptography.X509Certificates;
-using System.Security.Cryptography.Xml;
-using System.Threading.Tasks;
-using System.Xml;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.IO;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Security.Cryptography.Xml;
+    using System.Threading.Tasks;
+    using System.Xml;
+
     internal class XmlSignatureBuilder
     {
         private readonly XmlDocument _document;
         private readonly ISigningContext _signingContext;
         private readonly XmlElement _signatureElement;
         private XmlElement _objectElement;
-
 
         /// <summary>
         /// Creates a new signature with the correct namespace and empty root <c>Signature</c> element.
@@ -35,15 +34,17 @@ namespace OpenVsixSignTool.Core
             {
                 throw new InvalidOperationException("A manifest has not been set on the builder.");
             }
+
             XmlElement keyInfoElement, signedInfo, signatureValue;
-            using (var canonicalHashAlgorithm = HashAlgorithmTranslator.TranslateFromNameToxmlDSigUri(_signingContext.FileDigestAlgorithmName, out var canonicalHashAlgorithmIdentifier))
+            using (System.Security.Cryptography.HashAlgorithm canonicalHashAlgorithm = HashAlgorithmTranslator.TranslateFromNameToxmlDSigUri(_signingContext.FileDigestAlgorithmName, out Uri canonicalHashAlgorithmIdentifier))
             {
                 byte[] objectElementHash;
                 string canonicalizationMethodObjectId;
-                using (var objectElementCanonicalData = CanonicalizeElement(_objectElement, out canonicalizationMethodObjectId))
+                using (Stream objectElementCanonicalData = CanonicalizeElement(_objectElement, out canonicalizationMethodObjectId))
                 {
                     objectElementHash = canonicalHashAlgorithm.ComputeHash(objectElementCanonicalData);
                 }
+
                 keyInfoElement = BuildKeyInfoElement();
                 Stream signerInfoCanonicalStream;
                 (signerInfoCanonicalStream, signedInfo) = BuildSignedInfoElement(
@@ -54,6 +55,7 @@ namespace OpenVsixSignTool.Core
                 {
                     signerInfoElementHash = canonicalHashAlgorithm.ComputeHash(signerInfoCanonicalStream);
                 }
+
                 signatureValue = await BuildSignatureValueAsync(signerInfoElementHash);
             }
 
@@ -67,7 +69,7 @@ namespace OpenVsixSignTool.Core
 
         private async Task<XmlElement> BuildSignatureValueAsync(byte[] signerInfoElementHash)
         {
-            var signatureValueElement = CreateDSigElement("SignatureValue");
+            XmlElement signatureValueElement = CreateDSigElement("SignatureValue");
             signatureValueElement.InnerText = Convert.ToBase64String(await _signingContext.SignDigestAsync(signerInfoElementHash));
             return signatureValueElement;
         }
@@ -90,71 +92,72 @@ namespace OpenVsixSignTool.Core
             {
                 return s;
             }
+
             throw new NotSupportedException("Unable to canonicalize element.");
         }
 
         private (Stream, XmlElement) BuildSignedInfoElement(params (XmlElement element, byte[] canonicalDigest, string digestAlgorithm, string canonicalizationMethod)[] objects)
         {
-            var signingIdentifier = _signingContext.XmlDSigIdentifier;
+            Uri signingIdentifier = _signingContext.XmlDSigIdentifier;
 
-            var signedInfoElement = CreateDSigElement("SignedInfo");
-            var canonicalizationMethodElement = CreateDSigElement("CanonicalizationMethod");
-            var canonicalizationMethodAlgorithmAttribute = _document.CreateAttribute("Algorithm");
+            XmlElement signedInfoElement = CreateDSigElement("SignedInfo");
+            XmlElement canonicalizationMethodElement = CreateDSigElement("CanonicalizationMethod");
+            XmlAttribute canonicalizationMethodAlgorithmAttribute = _document.CreateAttribute("Algorithm");
             canonicalizationMethodElement.Attributes.Append(canonicalizationMethodAlgorithmAttribute);
 
-            var signatureMethodElement = CreateDSigElement("SignatureMethod");
-            var signatureMethodAlgorithmAttribute = _document.CreateAttribute("Algorithm");
+            XmlElement signatureMethodElement = CreateDSigElement("SignatureMethod");
+            XmlAttribute signatureMethodAlgorithmAttribute = _document.CreateAttribute("Algorithm");
             signatureMethodAlgorithmAttribute.Value = signingIdentifier.AbsoluteUri;
             signatureMethodElement.Attributes.Append(signatureMethodAlgorithmAttribute);
 
             signedInfoElement.AppendChild(canonicalizationMethodElement);
             signedInfoElement.AppendChild(signatureMethodElement);
 
-            foreach(var (element, digest, digestAlgorithm, method) in objects)
+            foreach((XmlElement element, byte[] digest, string digestAlgorithm, string method) in objects)
             {
                 var idFromElement = element.GetAttribute("Id");
                 var reference = "#" + idFromElement;
 
-                var referenceElement = CreateDSigElement("Reference");
-                var referenceUriAttribute = _document.CreateAttribute("URI");
-                var referenceTypeAttribute = _document.CreateAttribute("Type");
+                XmlElement referenceElement = CreateDSigElement("Reference");
+                XmlAttribute referenceUriAttribute = _document.CreateAttribute("URI");
+                XmlAttribute referenceTypeAttribute = _document.CreateAttribute("Type");
                 referenceUriAttribute.Value = reference;
                 referenceTypeAttribute.Value = OpcKnownUris.XmlDSigObject.AbsoluteUri;
 
                 referenceElement.Attributes.Append(referenceUriAttribute);
                 referenceElement.Attributes.Append(referenceTypeAttribute);
 
-                var referencesTransformsElement = CreateDSigElement("Transforms");
-                var transformElement = CreateDSigElement("Transform");
-                var transformAlgorithmAttribute = _document.CreateAttribute("Algorithm");
+                XmlElement referencesTransformsElement = CreateDSigElement("Transforms");
+                XmlElement transformElement = CreateDSigElement("Transform");
+                XmlAttribute transformAlgorithmAttribute = _document.CreateAttribute("Algorithm");
                 transformAlgorithmAttribute.Value = method;
                 transformElement.Attributes.Append(transformAlgorithmAttribute);
                 referencesTransformsElement.AppendChild(transformElement);
                 referenceElement.AppendChild(referencesTransformsElement);
 
-                var digestMethodElement = CreateDSigElement("DigestMethod");
-                var digestMethodAlgorithmAttribute = _document.CreateAttribute("Algorithm");
+                XmlElement digestMethodElement = CreateDSigElement("DigestMethod");
+                XmlAttribute digestMethodAlgorithmAttribute = _document.CreateAttribute("Algorithm");
                 digestMethodAlgorithmAttribute.Value = digestAlgorithm;
                 digestMethodElement.Attributes.Append(digestMethodAlgorithmAttribute);
                 referenceElement.AppendChild(digestMethodElement);
 
-                var digestValueElement = CreateDSigElement("DigestValue");
+                XmlElement digestValueElement = CreateDSigElement("DigestValue");
                 digestValueElement.InnerText = Convert.ToBase64String(digest);
                 referenceElement.AppendChild(digestValueElement);
 
                 signedInfoElement.AppendChild(referenceElement);
             }
 
-            var canonicalSignerInfo = CanonicalizeElement(signedInfoElement, out _, c => canonicalizationMethodAlgorithmAttribute.Value = c);
+            Stream canonicalSignerInfo = CanonicalizeElement(signedInfoElement, out _, c => canonicalizationMethodAlgorithmAttribute.Value = c);
             return (canonicalSignerInfo, signedInfoElement);
         }
 
         private XmlElement BuildKeyInfoElement()
         {
             var publicCertificate = Convert.ToBase64String(_signingContext.Certificate.Export(X509ContentType.Cert));
-            var keyInfoElement = CreateDSigElement("KeyInfo");
-            var x509DataElement = CreateDSigElement("X509Data");
-            var x509CertificateElement = CreateDSigElement("X509Certificate");
+            XmlElement keyInfoElement = CreateDSigElement("KeyInfo");
+            XmlElement x509DataElement = CreateDSigElement("X509Data");
+            XmlElement x509CertificateElement = CreateDSigElement("X509Certificate");
             x509CertificateElement.InnerText = publicCertificate;
             x509DataElement.AppendChild(x509CertificateElement);
             keyInfoElement.AppendChild(x509DataElement);
@@ -163,48 +166,47 @@ namespace OpenVsixSignTool.Core
 
         public void SetFileManifest(OpcSignatureManifest manifest)
         {
-            var objectElement = CreateDSigElement("Object");
-            var objectElementId = _document.CreateAttribute("Id");
+            XmlElement objectElement = CreateDSigElement("Object");
+            XmlAttribute objectElementId = _document.CreateAttribute("Id");
             objectElementId.Value = "idPackageObject";
             objectElement.Attributes.Append(objectElementId);
 
-            var manifestElement = CreateDSigElement("Manifest");
+            XmlElement manifestElement = CreateDSigElement("Manifest");
 
-            foreach (var file in manifest.Manifest)
+            foreach (OpcPartDigest file in manifest.Manifest)
             {
-                var referenceElement = CreateDSigElement("Reference");
-                var referenceElementUriAttribute = _document.CreateAttribute("URI");
+                XmlElement referenceElement = CreateDSigElement("Reference");
+                XmlAttribute referenceElementUriAttribute = _document.CreateAttribute("URI");
                 referenceElementUriAttribute.Value = file.ReferenceUri.ToQualifiedPath();
                 referenceElement.Attributes.Append(referenceElementUriAttribute);
 
-                var digestMethod = CreateDSigElement("DigestMethod");
-                var digestMethodAlgorithmAttribute = _document.CreateAttribute("Algorithm");
+                XmlElement digestMethod = CreateDSigElement("DigestMethod");
+                XmlAttribute digestMethodAlgorithmAttribute = _document.CreateAttribute("Algorithm");
                 digestMethodAlgorithmAttribute.Value = file.DigestAlgorithmIdentifier.AbsoluteUri;
                 digestMethod.Attributes.Append(digestMethodAlgorithmAttribute);
                 referenceElement.AppendChild(digestMethod);
 
-                var digestValue = CreateDSigElement("DigestValue");
+                XmlElement digestValue = CreateDSigElement("DigestValue");
                 digestValue.InnerText = System.Convert.ToBase64String(file.Digest);
                 referenceElement.AppendChild(digestValue);
-
 
                 manifestElement.AppendChild(referenceElement);
                 objectElement.AppendChild(manifestElement);
             }
 
-            var signaturePropertiesElement = CreateDSigElement("SignatureProperties");
-            var signaturePropertyElement = CreateDSigElement("SignatureProperty");
-            var signaturePropertyIdAttribute = _document.CreateAttribute("Id");
-            var signaturePropertyTargetAttribute = _document.CreateAttribute("Target");
+            XmlElement signaturePropertiesElement = CreateDSigElement("SignatureProperties");
+            XmlElement signaturePropertyElement = CreateDSigElement("SignatureProperty");
+            XmlAttribute signaturePropertyIdAttribute = _document.CreateAttribute("Id");
+            XmlAttribute signaturePropertyTargetAttribute = _document.CreateAttribute("Target");
             signaturePropertyIdAttribute.Value = "idSignatureTime";
             signaturePropertyTargetAttribute.Value = "";
 
             signaturePropertyElement.Attributes.Append(signaturePropertyIdAttribute);
             signaturePropertyElement.Attributes.Append(signaturePropertyTargetAttribute);
 
-            var signatureTimeElement = _document.CreateElement("SignatureTime", OpcKnownUris.XmlDigitalSignature.AbsoluteUri);
-            var signatureTimeFormatElement = _document.CreateElement("Format", OpcKnownUris.XmlDigitalSignature.AbsoluteUri);
-            var signatureTimeValueElement = _document.CreateElement("Value", OpcKnownUris.XmlDigitalSignature.AbsoluteUri);
+            XmlElement signatureTimeElement = _document.CreateElement("SignatureTime", OpcKnownUris.XmlDigitalSignature.AbsoluteUri);
+            XmlElement signatureTimeFormatElement = _document.CreateElement("Format", OpcKnownUris.XmlDigitalSignature.AbsoluteUri);
+            XmlElement signatureTimeValueElement = _document.CreateElement("Value", OpcKnownUris.XmlDigitalSignature.AbsoluteUri);
             signatureTimeFormatElement.InnerText = "YYYY-MM-DDThh:mm:ss.sTZD";
             signatureTimeValueElement.InnerText = _signingContext.ContextCreationTime.ToString("yyyy-MM-ddTHH:mm:ss.fzzz");
 

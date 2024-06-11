@@ -1,8 +1,8 @@
-﻿using System;
-using System.Security.Cryptography;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Security.Cryptography;
+
     /// <summary>
     /// Helper for translating a hash algorithm name to an instance of a hash algorithm and the
     /// URI XmlDSig identifier.
@@ -83,5 +83,4 @@ namespace OpenVsixSignTool.Core
             }
         }
     }
-
 }

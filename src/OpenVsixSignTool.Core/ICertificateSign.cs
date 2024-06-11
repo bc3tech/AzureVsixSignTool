@@ -1,8 +1,8 @@
-﻿using System;
-using System.Security.Cryptography;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Security.Cryptography;
+
     internal interface ICertificateSign : IDisposable
     {
         byte[] SignDigest(byte[] digest, HashAlgorithmName pkcsAlgorithm);

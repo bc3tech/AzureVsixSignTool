@@ -1,11 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Xunit;
-
-namespace OpenVsixSignTool.Core.Tests
+﻿namespace OpenVsixSignTool.Core.Tests
 {
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+
+    using Xunit;
+
     public class OpcPackageTests : IDisposable
     {
         private const string SamplePackage = @"sample\OpenVsixSignToolTest.vsix";
@@ -26,7 +27,7 @@ namespace OpenVsixSignTool.Core.Tests
             using (var package = OpcPackage.Open(SamplePackage))
             {
                 Assert.Equal(3, package.ContentTypes.Count);
-                var first = package.ContentTypes[0];
+                OpcContentType first = package.ContentTypes[0];
                 Assert.Equal("vsixmanifest", first.Extension);
                 Assert.Equal("text/xml", first.ContentType);
                 Assert.Equal(OpcContentTypeMode.Default, first.Mode);
@@ -39,7 +40,7 @@ namespace OpenVsixSignTool.Core.Tests
             using (var package = OpcPackage.Open(SamplePackage))
             {
                 var newItem = new OpcContentType("test", "test", OpcContentTypeMode.Default);
-                var contentTypes = package.ContentTypes;
+                OpcContentTypes contentTypes = package.ContentTypes;
                 Assert.Throws<InvalidOperationException>(() => contentTypes.Add(newItem));
             }
         }
@@ -49,12 +50,13 @@ namespace OpenVsixSignTool.Core.Tests
         {
             int initialCount;
             string shadowPath;
-            using (var package = ShadowCopyPackage(SamplePackage, out shadowPath, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out shadowPath, OpcPackageFileMode.ReadWrite))
             {
                 initialCount = package.ContentTypes.Count;
                 var newItem = new OpcContentType("test", "application/test", OpcContentTypeMode.Default);
                 package.ContentTypes.Add(newItem);
             }
+
             using (var reopenedPackage = OpcPackage.Open(shadowPath))
             {
                 Assert.Equal(initialCount + 1, reopenedPackage.ContentTypes.Count);
@@ -66,13 +68,14 @@ namespace OpenVsixSignTool.Core.Tests
         {
             int initialCount;
             string shadowPath;
-            using (var package = ShadowCopyPackage(SamplePackage, out shadowPath, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out shadowPath, OpcPackageFileMode.ReadWrite))
             {
                 initialCount = package.Relationships.Count;
                 var newItem = new OpcRelationship(new Uri("/test", UriKind.RelativeOrAbsolute), new Uri("/test", UriKind.RelativeOrAbsolute));
                 package.Relationships.Add(newItem);
                 Assert.True(newItem.Id != null && newItem.Id.Length == 9);
             }
+
             using (var reopenedPackage = OpcPackage.Open(shadowPath))
             {
                 Assert.Equal(initialCount + 1, reopenedPackage.Relationships.Count);
@@ -82,33 +85,33 @@ namespace OpenVsixSignTool.Core.Tests
         [Fact]
         public void ShouldRemovePart()
         {
-            using (var package = ShadowCopyPackage(SamplePackage, out _, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out _, OpcPackageFileMode.ReadWrite))
             {
                 var partToRemove = new Uri("/extension.vsixmanifest", UriKind.Relative);
-                var part = package.GetPart(partToRemove);
+                OpcPart part = package.GetPart(partToRemove);
                 Assert.NotNull(part);
                 package.RemovePart(part);
                 Assert.Null(package.GetPart(partToRemove));
             }
         }
 
-
         [Fact]
         public void ShouldRemoveRelationshipsForRemovedPartWhereRelationshipIsMaterialized()
         {
             string path;
-            using (var package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
             {
                 var partToRemove = new Uri("/extension.vsixmanifest", UriKind.Relative);
-                var part = package.GetPart(partToRemove);
+                OpcPart part = package.GetPart(partToRemove);
                 part.Relationships.Add(new OpcRelationship(new Uri("/foo", UriKind.Relative), new Uri("http://foo.com", UriKind.Absolute)));
             }
+
             using (var package = OpcPackage.Open(path, OpcPackageFileMode.ReadWrite))
             {
                 var relationshipPartUri = new Uri("/_rels/extension.vsixmanifest.rels", UriKind.Relative);
                 Assert.NotNull(package.GetPart(relationshipPartUri));
                 var partToRemove = new Uri("/extension.vsixmanifest", UriKind.Relative);
-                var part = package.GetPart(partToRemove);
+                OpcPart part = package.GetPart(partToRemove);
                 package.RemovePart(part);
                 Assert.False(package.HasPart(relationshipPartUri));
                 Assert.Null(package.GetPart(relationshipPartUri));
@@ -119,13 +122,14 @@ namespace OpenVsixSignTool.Core.Tests
         public void ShouldRemoveRelationshipsForRemovedPartWhereRelationshipIsNotMaterialized()
         {
             string path;
-            using (var package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
             {
                 var partToRemove = new Uri("/extension.vsixmanifest", UriKind.Relative);
-                var part = package.GetPart(partToRemove);
+                OpcPart part = package.GetPart(partToRemove);
                 part.Relationships.Add(new OpcRelationship(new Uri("/foo", UriKind.Relative), new Uri("http://foo.com", UriKind.Absolute)));
                 package.RemovePart(part);
             }
+
             using (var package = OpcPackage.Open(path))
             {
                 var relationshipPartUri = new Uri("/_rels/extension.vsixmanifest.rels", UriKind.Relative);
@@ -139,7 +143,7 @@ namespace OpenVsixSignTool.Core.Tests
         {
             using (var package = OpcPackage.Open(SamplePackage))
             {
-                var parts = package.GetParts().ToArray();
+                OpcPart[] parts = package.GetParts().ToArray();
                 Assert.Equal(1, parts.Length);
             }
         }
@@ -149,8 +153,8 @@ namespace OpenVsixSignTool.Core.Tests
         {
             using (var package = OpcPackage.Open(SamplePackage))
             {
-                var builder = package.CreateSignatureBuilder();
-                foreach (var part in package.GetParts())
+                OpcPackageSignatureBuilder builder = package.CreateSignatureBuilder();
+                foreach (OpcPart part in package.GetParts())
                 {
                     builder.EnqueuePart(part);
                     Assert.True(builder.DequeuePart(part));
@@ -204,6 +208,7 @@ namespace OpenVsixSignTool.Core.Tests
             {
                 _shadowFiles.ForEach(File.Delete);
             }
+
             CleanUpShadows();
         }
     }

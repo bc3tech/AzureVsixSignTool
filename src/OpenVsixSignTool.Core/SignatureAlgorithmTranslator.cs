@@ -1,8 +1,8 @@
-﻿using System;
-using System.Security.Cryptography;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Security.Cryptography;
+
     internal static class SignatureAlgorithmTranslator
     {
         public static Uri SignatureAlgorithmToXmlDSigUri(SigningAlgorithm signatureAlgorithm, HashAlgorithmName hashAlgorithmName)

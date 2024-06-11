@@ -1,11 +1,11 @@
-﻿using System;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Xml.Linq;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.IO;
+    using System.IO.Compression;
+    using System.Linq;
+    using System.Xml.Linq;
+
     /// <summary>
     /// Represents a part inside of a package.
     /// </summary>
@@ -14,21 +14,19 @@ namespace OpenVsixSignTool.Core
         internal OpcRelationships _relationships;
         private readonly OpcPackageFileMode _mode;
         private readonly string _path;
-        private readonly ZipArchiveEntry _entry;
-        private readonly OpcPackage _package;
 
         internal OpcPart(OpcPackage package, string path, ZipArchiveEntry entry, OpcPackageFileMode mode)
         {
-            Uri = new Uri(OpcPackage.BasePackageUri, path);
-            _package = package;
+            this.Uri = new Uri(OpcPackage.BasePackageUri, path);
+            Package = package;
             _path = path;
-            _entry = entry;
+            Entry = entry;
             _mode = mode;
         }
 
-        internal OpcPackage Package => _package;
+        internal OpcPackage Package { get; }
 
-        internal ZipArchiveEntry Entry => _entry;
+        internal ZipArchiveEntry Entry { get; }
 
         public Uri Uri { get; }
 
@@ -40,6 +38,7 @@ namespace OpenVsixSignTool.Core
                 {
                     _relationships = ConstructRelationships();
                 }
+
                 return _relationships;
             }
         }
@@ -49,7 +48,7 @@ namespace OpenVsixSignTool.Core
             get
             {
                 var extension = Path.GetExtension(_path)?.TrimStart('.');
-                return _package.ContentTypes.FirstOrDefault(ct => string.Equals(ct.Extension, extension, StringComparison.OrdinalIgnoreCase))?.ContentType ?? OpcKnownMimeTypes.OctetString;
+                return Package.ContentTypes.FirstOrDefault(ct => string.Equals(ct.Extension, extension, StringComparison.OrdinalIgnoreCase))?.ContentType ?? OpcKnownMimeTypes.OctetString;
             }
         }
 
@@ -61,7 +60,7 @@ namespace OpenVsixSignTool.Core
         private OpcRelationships ConstructRelationships()
         {
             var path = GetRelationshipFilePath();
-            var entry = _package._archive.GetEntry(path);
+            ZipArchiveEntry entry = Package._archive.GetEntry(path);
             var readOnlyMode = _mode != OpcPackageFileMode.ReadWrite;
             var location = new Uri(OpcPackage.BasePackageUri, path);
             if (entry == null)
@@ -70,23 +69,16 @@ namespace OpenVsixSignTool.Core
             }
             else
             {
-                using (var stream = entry.Open())
+                using (Stream stream = entry.Open())
                 {
                     return new OpcRelationships(location, XDocument.Load(stream, LoadOptions.PreserveWhitespace), readOnlyMode);
                 }
             }
         }
 
-        public Stream Open() => _entry.Open();
+        public Stream Open() => Entry.Open();
 
-        public bool Equals(OpcPart other)
-        {
-            if (ReferenceEquals(other, null))
-            {
-                return false;
-            }
-            return Uri.Equals(other.Uri);
-        }
+        public bool Equals(OpcPart other) => !(other is null) && this.Uri.Equals(other.Uri);
 
         public override bool Equals(object obj)
         {
@@ -94,9 +86,10 @@ namespace OpenVsixSignTool.Core
             {
                 return Equals(part);
             }
+
             return false;
         }
 
-        public override int GetHashCode() => Uri.GetHashCode();
+        public override int GetHashCode() => this.Uri.GetHashCode();
     }
 }

@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System.Collections.Generic;
+
     /// <summary>
     /// Defines an interface for package signing presets.
     /// </summary>

@@ -1,10 +1,10 @@
-﻿using System;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Threading.Tasks;
+
     /// <summary>
     /// An interface for a signing context. Implementors of this interface will be able to
     /// sign a VSIX package.

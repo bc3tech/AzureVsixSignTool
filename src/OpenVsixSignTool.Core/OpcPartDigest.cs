@@ -1,7 +1,7 @@
-﻿using System;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+
     internal class OpcPartDigest
     {
         public Uri ReferenceUri { get; }
@@ -10,10 +10,9 @@ namespace OpenVsixSignTool.Core
 
         public OpcPartDigest(Uri referenceUri, Uri digestAlgorithmIdentifer, byte[] digest)
         {
-            ReferenceUri = referenceUri;
-            DigestAlgorithmIdentifier = digestAlgorithmIdentifer;
-            Digest = digest;
+            this.ReferenceUri = referenceUri;
+            this.DigestAlgorithmIdentifier = digestAlgorithmIdentifer;
+            this.Digest = digest;
         }
     }
-
 }

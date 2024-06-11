@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Security.Cryptography;
+
     /// <summary>
     /// Parses DER encoded OIDs.
     /// </summary>
@@ -27,19 +27,22 @@ namespace OpenVsixSignTool.Core
             {
                 return null;
             }
+
             var magicValue = data[MAGIC_OID_OFFSET];
             if (magicValue != MAGIC_OID_VALUE)
             {
                 return null;
             }
+
             var dataLength = data[DATA_LENGTH_OFFSET];
             if (data.Length - FIRST_OCTET_OFFSET != dataLength)
             {
                 return null;
             }
+
             var firstValue = data[FIRST_OCTET_OFFSET] / 40L;
             var secondValue = data[FIRST_OCTET_OFFSET] % 40L;
-            var remainder = data.Skip(VLQ_DATA_OFFSET);
+            IEnumerable<byte> remainder = data.Skip(VLQ_DATA_OFFSET);
             try
             {
                 return new Oid(string.Join(".", new[] { firstValue, secondValue }.Concat(ReadVlqData(remainder))));
@@ -66,6 +69,7 @@ namespace OpenVsixSignTool.Core
                     value = 0;
                 }
             }
+
             if (value != 0)
             {
                 throw new InvalidOperationException();

@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+
     /// <summary>
     /// The preset for VSIX files.
     /// </summary>
@@ -12,7 +12,7 @@ namespace OpenVsixSignTool.Core
         IEnumerable<OpcPart> ISignatureBuilderPreset.GetPartsForSigning(OpcPackage package)
         {
             var existingSignatures = package.GetSignatures().ToList();
-            foreach (var part in package.GetParts())
+            foreach (OpcPart part in package.GetParts())
             {
                 if (existingSignatures.All(existing => Uri.Compare(part.Uri, existing.Part.Uri, UriComponents.Path, UriFormat.Unescaped, StringComparison.Ordinal) != 0))
                 {

@@ -1,13 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
-using System.Xml;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Threading.Tasks;
+    using System.Xml;
+
     /// <summary>
     /// A builder to sign an OPC package.
     /// </summary>
@@ -44,7 +44,6 @@ namespace OpenVsixSignTool.Core
             _enqueuedParts.AddRange(new TPreset().GetPartsForSigning(_package));
         }
 
-
         /// <summary>
         /// Creates a signature from the enqueued parts.
         /// </summary>
@@ -52,21 +51,20 @@ namespace OpenVsixSignTool.Core
         /// See the documented of <see cref="AzureKeyVaultSignConfigurationSet"/> for more information.</param>
         public async Task<OpcSignature> SignAsync(AzureKeyVaultSignConfigurationSet configuration)
         {
-            using (var azureConfiguration = await KeyVaultConfigurationDiscoverer.Materialize(configuration))
+            AzureKeyVaultMaterializedConfiguration azureConfiguration = await KeyVaultConfigurationDiscoverer.Materialize(configuration);
+            var fileName = azureConfiguration.PublicCertificate.GetCertHashString() + ".psdsxs";
+            (HashSet<OpcPart> allParts, OpcPart signatureFile) = SignCore(fileName);
+            using (var signingContext = new KeyVaultSigningContext(azureConfiguration))
             {
-                var fileName = azureConfiguration.PublicCertificate.GetCertHashString() + ".psdsxs";
-                var (allParts, signatureFile) = SignCore(fileName);
-                using (var signingContext = new KeyVaultSigningContext(azureConfiguration))
-                {
-                    var fileManifest = OpcSignatureManifest.Build(signingContext, allParts);
-                    var builder = new XmlSignatureBuilder(signingContext);
-                    builder.SetFileManifest(fileManifest);
-                    var result = await builder.BuildAsync();
-                    PublishSignature(result, signatureFile);
-                }
-                _package.Flush();
-                return new OpcSignature(signatureFile);
+                var fileManifest = OpcSignatureManifest.Build(signingContext, allParts);
+                var builder = new XmlSignatureBuilder(signingContext);
+                builder.SetFileManifest(fileManifest);
+                XmlDocument result = await builder.BuildAsync();
+                PublishSignature(result, signatureFile);
             }
+
+            _package.Flush();
+            return new OpcSignature(signatureFile);
         }
 
         /// <summary>
@@ -77,22 +75,23 @@ namespace OpenVsixSignTool.Core
         public async Task<OpcSignature> SignAsync(CertificateSignConfigurationSet configuration)
         {
             var fileName = configuration.SigningCertificate.GetCertHashString() + ".psdsxs";
-            var (allParts, signatureFile) = SignCore(fileName);
+            (HashSet<OpcPart> allParts, OpcPart signatureFile) = SignCore(fileName);
             using (var signingContext = new CertificateSigningContext(configuration.SigningCertificate, configuration.PkcsDigestAlgorithm, configuration.FileDigestAlgorithm))
             {
                 var fileManifest = OpcSignatureManifest.Build(signingContext, allParts);
                 var builder = new XmlSignatureBuilder(signingContext);
                 builder.SetFileManifest(fileManifest);
-                var result = await builder.BuildAsync();
+                XmlDocument result = await builder.BuildAsync();
                 PublishSignature(result, signatureFile);
             }
+
             _package.Flush();
             return new OpcSignature(signatureFile);
         }
 
         private static void PublishSignature(XmlDocument document, OpcPart signatureFile)
         {
-            using (var copySignatureStream = signatureFile.Open())
+            using (System.IO.Stream copySignatureStream = signatureFile.Open())
             {
                 copySignatureStream.SetLength(0L);
                 using (var xmlWriter = new XmlTextWriter(copySignatureStream, System.Text.Encoding.UTF8))
@@ -108,7 +107,7 @@ namespace OpenVsixSignTool.Core
         {
             var originFileUri = new Uri("package:///package/services/digital-signature/origin.psdor", UriKind.Absolute);
             var signatureUriRoot = new Uri("package:///package/services/digital-signature/xml-signature/", UriKind.Absolute);
-            var originFileRelationship = _package.Relationships.FirstOrDefault(r => r.Type.Equals(OpcKnownUris.DigitalSignatureOrigin));
+            OpcRelationship originFileRelationship = _package.Relationships.FirstOrDefault(r => r.Type.Equals(OpcKnownUris.DigitalSignatureOrigin));
 
             OpcPart originFile;
             OpcPart signatureFile;
@@ -123,7 +122,7 @@ namespace OpenVsixSignTool.Core
                 _package.Relationships.Add(new OpcRelationship(originFile.Uri, OpcKnownUris.DigitalSignatureOrigin));
             }
 
-            var signatureRelationship = originFile.Relationships.FirstOrDefault(r => r.Type.Equals(OpcKnownUris.DigitalSignatureSignature));
+            OpcRelationship signatureRelationship = originFile.Relationships.FirstOrDefault(r => r.Type.Equals(OpcKnownUris.DigitalSignatureSignature));
             if (signatureRelationship != null)
             {
                 signatureFile = _package.GetPart(signatureRelationship.Target) ?? _package.CreatePart(originFileUri, OpcKnownMimeTypes.DigitalSignatureSignature);

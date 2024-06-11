@@ -1,10 +1,10 @@
-﻿using System;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Threading.Tasks;
+
     /// <summary>
     /// A context for performing signing operations with a certificate.
     /// </summary>
@@ -25,18 +25,18 @@ namespace OpenVsixSignTool.Core
         /// </param>
         public CertificateSigningContext(X509Certificate2 certificate, HashAlgorithmName pkcsHashAlgorithmName, HashAlgorithmName fileDigestAlgorithmName)
         {
-            Certificate = certificate;
-            ContextCreationTime = DateTimeOffset.Now;
+            this.Certificate = certificate;
+            this.ContextCreationTime = DateTimeOffset.Now;
             _pkcsHashAlgorithmName = pkcsHashAlgorithmName;
-            FileDigestAlgorithmName = fileDigestAlgorithmName;
+            this.FileDigestAlgorithmName = fileDigestAlgorithmName;
             switch (certificate.PublicKey.Oid.Value)
             {
                 case KnownOids.X509Algorithms.RSA:
-                    SignatureAlgorithm = SigningAlgorithm.RSA;
+                    this.SignatureAlgorithm = SigningAlgorithm.RSA;
                     _signProvider = new RSAPkcsCertificateSign(certificate);
                     break;
                 case KnownOids.X509Algorithms.Ecc:
-                    SignatureAlgorithm = SigningAlgorithm.ECDSA;
+                    this.SignatureAlgorithm = SigningAlgorithm.ECDSA;
                     _signProvider = new ECDsaCertificateSign(certificate);
                     break;
                 default:
@@ -74,7 +74,7 @@ namespace OpenVsixSignTool.Core
         /// <returns>True if the signature is valid, otherwise false.</returns>
         public Task<bool> VerifyDigestAsync(byte[] digest, byte[] signature) => Task.FromResult(_signProvider.VerifyDigest(digest, signature, _pkcsHashAlgorithmName));
 
-        public Uri XmlDSigIdentifier => SignatureAlgorithmTranslator.SignatureAlgorithmToXmlDSigUri(SignatureAlgorithm, _pkcsHashAlgorithmName);
+        public Uri XmlDSigIdentifier => SignatureAlgorithmTranslator.SignatureAlgorithmToXmlDSigUri(this.SignatureAlgorithm, _pkcsHashAlgorithmName);
 
         public void Dispose()
         {

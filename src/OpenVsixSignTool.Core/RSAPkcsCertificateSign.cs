@@ -1,8 +1,8 @@
-﻿using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
+
     internal class RSAPkcsCertificateSign : ICertificateSign
     {
         private readonly RSA _algorithm;

@@ -1,9 +1,9 @@
-﻿using System;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
+
     internal class ECDsaCertificateSign : ICertificateSign
     {
         public ECDsaCurve ECDsaCurve { get; }
@@ -11,21 +11,22 @@ namespace OpenVsixSignTool.Core
 
         public ECDsaCertificateSign(X509Certificate2 certificate)
         {
-            var curveOid = OidParser.ReadFromBytes(certificate.PublicKey.EncodedParameters.RawData);
+            Oid curveOid = OidParser.ReadFromBytes(certificate.PublicKey.EncodedParameters.RawData);
             switch (curveOid.Value)
             {
                 case KnownOids.EccCurves.EcdsaP256:
-                    ECDsaCurve = ECDsaCurve.p256;
+                    this.ECDsaCurve = ECDsaCurve.p256;
                     break;
                 case KnownOids.EccCurves.EcdsaP384:
-                    ECDsaCurve = ECDsaCurve.p384;
+                    this.ECDsaCurve = ECDsaCurve.p384;
                     break;
                 case KnownOids.EccCurves.EcdsaP521:
-                    ECDsaCurve = ECDsaCurve.p521;
+                    this.ECDsaCurve = ECDsaCurve.p521;
                     break;
                 default:
                     throw new NotSupportedException("The specified ECC curve is not supported.");
             }
+
             _algorithm = certificate.GetECDsaPrivateKey();
         }
 

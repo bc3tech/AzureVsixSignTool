@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Xml.Linq;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.IO.Compression;
+    using System.Linq;
+    using System.Xml.Linq;
+
     /// <summary>
     /// Allow manipulating and signing an OPC package, such as a VSIX.
     /// </summary>
@@ -15,7 +15,6 @@ namespace OpenVsixSignTool.Core
         internal static readonly Uri BasePackageUri = new Uri("package:///", UriKind.Absolute);
         private const string CONTENT_TYPES_XML = "[Content_Types].xml";
         private const string GLOBAL_RELATIONSHIPS = "_rels/.rels";
-
 
         internal readonly ZipArchive _archive;
         private readonly OpcPackageFileMode _mode;
@@ -32,8 +31,8 @@ namespace OpenVsixSignTool.Core
         /// <returns>An instance of an <see cref="OpcPackage"/>.</returns>
         public static OpcPackage Open(string path, OpcPackageFileMode mode = OpcPackageFileMode.Read)
         {
-            var zipMode = GetZipModeFromOpcPackageMode(mode);
-            var zip = ZipFile.Open(path, zipMode);
+            ZipArchiveMode zipMode = GetZipModeFromOpcPackageMode(mode);
+            ZipArchive zip = ZipFile.Open(path, zipMode);
             return new OpcPackage(zip, mode);
         }
 
@@ -56,6 +55,7 @@ namespace OpenVsixSignTool.Core
                 {
                     _contentTypes = ConstructContentTypes();
                 }
+
                 return _contentTypes;
             }
         }
@@ -79,7 +79,7 @@ namespace OpenVsixSignTool.Core
         /// <returns>An enumerable source of parts.</returns>
         public IEnumerable<OpcPart> GetParts()
         {
-            foreach (var entry in _archive.Entries)
+            foreach (ZipArchiveEntry entry in _archive.Entries)
             {
                 if (entry.FullName.Equals(CONTENT_TYPES_XML, StringComparison.OrdinalIgnoreCase))
                 {
@@ -92,6 +92,7 @@ namespace OpenVsixSignTool.Core
                     part = new OpcPart(this, entry.FullName, entry, _mode);
                     _partTracker.Add(entry.FullName, part);
                 }
+
                 yield return part;
             }
         }
@@ -108,14 +109,16 @@ namespace OpenVsixSignTool.Core
             OpcPart part;
             if (!_partTracker.TryGetValue(path, out part))
             {
-                var entry = _archive.GetEntry(path);
+                ZipArchiveEntry entry = _archive.GetEntry(path);
                 if (entry == null)
                 {
                     return null;
                 }
+
                 part = new OpcPart(this, entry.FullName, entry, _mode);
                 _partTracker.Add(path, part);
             }
+
             return part;
         }
 
@@ -133,12 +136,14 @@ namespace OpenVsixSignTool.Core
             {
                 throw new InvalidOperationException("The part already exists.");
             }
+
             var extension = Path.GetExtension(path)?.TrimStart('.');
-            if (!ContentTypes.Any(ct => String.Equals(extension, ct.Extension, StringComparison.OrdinalIgnoreCase)))
+            if (!this.ContentTypes.Any(ct => string.Equals(extension, ct.Extension, StringComparison.OrdinalIgnoreCase)))
             {
-                ContentTypes.Add(new OpcContentType(extension, mimeType.ToLower(), OpcContentTypeMode.Default));
+                this.ContentTypes.Add(new OpcContentType(extension, mimeType.ToLower(), OpcContentTypeMode.Default));
             }
-            var zipEntry = _archive.CreateEntry(path, CompressionLevel.NoCompression);
+
+            ZipArchiveEntry zipEntry = _archive.CreateEntry(path, CompressionLevel.NoCompression);
             var part = new OpcPart(this, zipEntry.FullName, zipEntry, _mode);
             _partTracker.Add(zipEntry.FullName, part);
             return part;
@@ -162,9 +167,9 @@ namespace OpenVsixSignTool.Core
         /// <remarks>This does not validate or clean up other references to this part.</remarks>
         public void RemovePart(OpcPart part)
         {
-            var relationshipUri = part.Relationships.DocumentUri;
+            Uri relationshipUri = part.Relationships.DocumentUri;
             var relationshipPath = relationshipUri.ToPackagePath();
-            var relationshipEntry = _archive.GetEntry(relationshipPath);
+            ZipArchiveEntry relationshipEntry = _archive.GetEntry(relationshipPath);
             relationshipEntry?.Delete();
             _partTracker.Remove(relationshipPath);
 
@@ -185,6 +190,7 @@ namespace OpenVsixSignTool.Core
                 {
                     _relationships = ConstructRelationships();
                 }
+
                 return _relationships;
             }
         }
@@ -194,7 +200,7 @@ namespace OpenVsixSignTool.Core
         /// </summary>
         public void Flush()
         {
-            foreach (var part in _partTracker.Values)
+            foreach (OpcPart part in _partTracker.Values)
             {
                 if (part._relationships?.IsDirty == true)
                 {
@@ -202,17 +208,19 @@ namespace OpenVsixSignTool.Core
                     part._relationships.IsDirty = false;
                 }
             }
+
             if (_relationships?.IsDirty == true)
             {
                 SaveRelationships(_relationships);
                 _relationships.IsDirty = false;
             }
+
             if (_contentTypes?.IsDirty == true)
             {
-                var entry = _archive.GetEntry(CONTENT_TYPES_XML) ?? _archive.CreateEntry(CONTENT_TYPES_XML);
-                using (var stream = entry.Open())
+                ZipArchiveEntry entry = _archive.GetEntry(CONTENT_TYPES_XML) ?? _archive.CreateEntry(CONTENT_TYPES_XML);
+                using (Stream stream = entry.Open())
                 {
-                    var newXml = _contentTypes.ToXml();
+                    XDocument newXml = _contentTypes.ToXml();
                     stream.SetLength(0L);
                     newXml.Save(stream, SaveOptions.None);
                     _contentTypes.IsDirty = false;
@@ -222,16 +230,17 @@ namespace OpenVsixSignTool.Core
 
         private void SaveRelationships(OpcRelationships relationships)
         {
-            if (!ContentTypes.Any(ct => ct.Extension.Equals("rels", StringComparison.OrdinalIgnoreCase)))
+            if (!this.ContentTypes.Any(ct => ct.Extension.Equals("rels", StringComparison.OrdinalIgnoreCase)))
             {
-                ContentTypes.Add(new OpcContentType("rels", OpcKnownMimeTypes.OpenXmlRelationship, OpcContentTypeMode.Default));
+                this.ContentTypes.Add(new OpcContentType("rels", OpcKnownMimeTypes.OpenXmlRelationship, OpcContentTypeMode.Default));
             }
+
             var path = relationships.DocumentUri.ToPackagePath();
-            var entry = _archive.GetEntry(path) ?? _archive.CreateEntry(path);
-            using (var stream = entry.Open())
+            ZipArchiveEntry entry = _archive.GetEntry(path) ?? _archive.CreateEntry(path);
+            using (Stream stream = entry.Open())
             {
                 stream.SetLength(0L);
-                var newXml = relationships.ToXml();
+                XDocument newXml = relationships.ToXml();
                 newXml.Save(stream, SaveOptions.None);
             }
         }
@@ -248,31 +257,34 @@ namespace OpenVsixSignTool.Core
         /// <returns>An enumerable collection of signatures in the package.</returns>
         public IEnumerable<OpcSignature> GetSignatures()
         {
-            var originFileRelationship = Relationships.FirstOrDefault(r => r.Type.Equals(OpcKnownUris.DigitalSignatureOrigin));
+            OpcRelationship originFileRelationship = this.Relationships.FirstOrDefault(r => r.Type.Equals(OpcKnownUris.DigitalSignatureOrigin));
             if (originFileRelationship == null)
             {
                 yield break;
             }
-            var originPart = GetPart(originFileRelationship.Target);
+
+            OpcPart originPart = GetPart(originFileRelationship.Target);
             if (originPart == null)
             {
                 yield break;
             }
+
             var signatureRelationships = originPart.Relationships.Where(r => r.Type.Equals(OpcKnownUris.DigitalSignatureSignature)).ToList();
-            foreach (var signatureRelationship in signatureRelationships)
+            foreach (OpcRelationship signatureRelationship in signatureRelationships)
             {
-                var signaturePart = GetPart(signatureRelationship.Target);
+                OpcPart signaturePart = GetPart(signatureRelationship.Target);
                 if (signaturePart == null)
                 {
                     continue;
                 }
+
                 yield return new OpcSignature(signaturePart);
             }
         }
 
         private OpcContentTypes ConstructContentTypes()
         {
-            var entry = _archive.GetEntry(CONTENT_TYPES_XML);
+            ZipArchiveEntry entry = _archive.GetEntry(CONTENT_TYPES_XML);
             var readOnlyMode = _mode != OpcPackageFileMode.ReadWrite;
             if (entry == null)
             {
@@ -280,7 +292,7 @@ namespace OpenVsixSignTool.Core
             }
             else
             {
-                using (var stream = entry.Open())
+                using (Stream stream = entry.Open())
                 {
                     return new OpcContentTypes(XDocument.Load(stream, LoadOptions.PreserveWhitespace), readOnlyMode);
                 }
@@ -289,7 +301,7 @@ namespace OpenVsixSignTool.Core
 
         private OpcRelationships ConstructRelationships()
         {
-            var entry = _archive.GetEntry(GLOBAL_RELATIONSHIPS);
+            ZipArchiveEntry entry = _archive.GetEntry(GLOBAL_RELATIONSHIPS);
             var readOnlyMode = _mode != OpcPackageFileMode.ReadWrite;
             if (entry == null)
             {
@@ -299,7 +311,7 @@ namespace OpenVsixSignTool.Core
             else
             {
                 var location = new Uri(BasePackageUri, entry.FullName);
-                using (var stream = entry.Open())
+                using (Stream stream = entry.Open())
                 {
                     return new OpcRelationships(location, XDocument.Load(stream, LoadOptions.PreserveWhitespace), readOnlyMode);
                 }

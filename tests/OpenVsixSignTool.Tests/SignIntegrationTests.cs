@@ -1,11 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Xunit;
-
-namespace OpenVsixSignTool.Tests
+﻿namespace OpenVsixSignTool.Tests
 {
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+
+    using Xunit;
+
     public class SignIntegrationTests : IDisposable
     {
         private readonly List<string> _shadowFiles = new List<string>();
@@ -22,7 +23,6 @@ namespace OpenVsixSignTool.Tests
                 Assert.Contains(expectedMessage, consoleWriter.ToString());
             }
         }
-
 
         [Theory]
         [MemberData(nameof(HandleValidCommandLineOptionsTheories))]
@@ -42,7 +42,7 @@ namespace OpenVsixSignTool.Tests
         public void ShouldHandleRepeatedCommandLineOptions((string[] args, string expectedMessage, int expectedExitCode)[] argsSets)
         {
             var shadow = ShadowCopyPackage(@"sample\OpenVsixSignToolTest.vsix");
-            foreach (var (args, expectedMessage, expectedExitCode) in argsSets)
+            foreach ((string[] args, string expectedMessage, int expectedExitCode) in argsSets)
             {
                 using (var consoleWriter = new StringWriter())
                 {
@@ -52,7 +52,6 @@ namespace OpenVsixSignTool.Tests
                 }
             }
         }
-
 
         public static IEnumerable<object[]> HandleValidCommandLineOptionsTheories
         {
@@ -141,6 +140,7 @@ namespace OpenVsixSignTool.Tests
             {
                 _shadowFiles.ForEach(File.Delete);
             }
+
             CleanUpShadows();
         }
     }

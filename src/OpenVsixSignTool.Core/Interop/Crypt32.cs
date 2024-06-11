@@ -1,8 +1,8 @@
-﻿using System;
-using System.Runtime.InteropServices;
-
-namespace OpenVsixSignTool.Core.Interop
+﻿namespace OpenVsixSignTool.Core.Interop
 {
+    using System;
+    using System.Runtime.InteropServices;
+
     internal static class Crypt32
     {
         [method: DllImport("crypt32.dll", CallingConvention = CallingConvention.Winapi)]

@@ -1,13 +1,14 @@
-﻿using OpenVsixSignTool.Core.Interop;
-using System;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
-using System.Xml;
-using System.Xml.Linq;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using OpenVsixSignTool.Core.Interop;
+
+    using System;
+    using System.Runtime.InteropServices;
+    using System.Security.Cryptography;
+    using System.Threading.Tasks;
+    using System.Xml;
+    using System.Xml.Linq;
+
     /// <summary>
     /// A builder for adding timestamps to a package.
     /// </summary>
@@ -18,7 +19,7 @@ namespace OpenVsixSignTool.Core
         internal OpcPackageTimestampBuilder(OpcPart part)
         {
             _part = part;
-            Timeout = TimeSpan.FromSeconds(30);
+            this.Timeout = TimeSpan.FromSeconds(30);
         }
 
         /// <summary>
@@ -39,11 +40,13 @@ namespace OpenVsixSignTool.Core
             {
                 throw new ArgumentNullException(nameof(timestampServer));
             }
+
             if (!timestampServer.IsAbsoluteUri)
             {
                 throw new ArgumentException("The timestamp server must be an absolute URI.", nameof(timestampServer));
             }
-            var oid = HashAlgorithmTranslator.TranslateFromNameToOid(timestampAlgorithm);
+
+            Oid oid = HashAlgorithmTranslator.TranslateFromNameToOid(timestampAlgorithm);
             using (var nonce = new TimestampNonceFactory())
             {
                 var parameters = new CRYPT_TIMESTAMP_PARA();
@@ -52,16 +55,16 @@ namespace OpenVsixSignTool.Core
                 parameters.Nonce.cbData = nonce.Size;
                 parameters.Nonce.pbData = nonce.Nonce;
                 parameters.pszTSAPolicyId = null;
-                var (signatureDocument, timestampSubject) = GetSignatureToTimestamp(_part);
+                (XDocument signatureDocument, byte[] timestampSubject) = GetSignatureToTimestamp(_part);
                 var winResult = Crypt32.CryptRetrieveTimeStamp(
                     timestampServer.AbsoluteUri,
                     CryptRetrieveTimeStampRetrievalFlags.NONE,
-                    (uint)Timeout.TotalMilliseconds,
+                    (uint)this.Timeout.TotalMilliseconds,
                     oid.Value,
                     ref parameters,
                     timestampSubject,
                     (uint)timestampSubject.Length,
-                    out var context,
+                    out CryptMemorySafeHandle context,
                     IntPtr.Zero,
                     IntPtr.Zero
                 );
@@ -69,6 +72,7 @@ namespace OpenVsixSignTool.Core
                 {
                     return Task.FromResult(TimestampResult.Failed);
                 }
+
                 using (context)
                 {
                     var refSuccess = false;
@@ -79,7 +83,8 @@ namespace OpenVsixSignTool.Core
                         {
                             return Task.FromResult(TimestampResult.Failed);
                         }
-                        var structure = Marshal.PtrToStructure<CRYPT_TIMESTAMP_CONTEXT>(context.DangerousGetHandle());
+
+                        CRYPT_TIMESTAMP_CONTEXT structure = Marshal.PtrToStructure<CRYPT_TIMESTAMP_CONTEXT>(context.DangerousGetHandle());
                         var encoded = new byte[structure.cbEncoded];
                         Marshal.Copy(structure.pbEncoded, encoded, 0, encoded.Length);
                         ApplyTimestamp(signatureDocument, _part, encoded);
@@ -99,7 +104,7 @@ namespace OpenVsixSignTool.Core
         private static (XDocument document, byte[] signature) GetSignatureToTimestamp(OpcPart signaturePart)
         {
             XNamespace xmlDSigNamespace = OpcKnownUris.XmlDSig.AbsoluteUri;
-            using (var signatureStream = signaturePart.Open())
+            using (System.IO.Stream signatureStream = signaturePart.Open())
             {
                 var doc = XDocument.Load(signatureStream);
                 var signature = doc.Element(xmlDSigNamespace + "Signature")?.Element(xmlDSigNamespace + "SignatureValue")?.Value?.Trim();
@@ -119,7 +124,7 @@ namespace OpenVsixSignTool.Core
                 )
             );
             document.Element(xmlDSigNamespace + "Signature").Add(signature);
-            using (var copySignatureStream = signaturePart.Open())
+            using (System.IO.Stream copySignatureStream = signaturePart.Open())
             {
                 using (var xmlWriter = new XmlTextWriter(copySignatureStream, System.Text.Encoding.UTF8))
                 {
@@ -132,13 +137,10 @@ namespace OpenVsixSignTool.Core
 
         internal class TimestampNonceFactory : IDisposable
         {
-            private readonly IntPtr _nativeMemory;
-            private readonly uint _nonceSize;
-
             public TimestampNonceFactory(int nonceSize = 32)
             {
-                _nativeMemory = Marshal.AllocCoTaskMem(nonceSize);
-                _nonceSize = checked((uint)nonceSize);
+                Nonce = Marshal.AllocCoTaskMem(nonceSize);
+                Size = checked((uint)nonceSize);
                 var nonce = new byte[nonceSize];
                 using (var rng = RandomNumberGenerator.Create())
                 {
@@ -148,15 +150,15 @@ namespace OpenVsixSignTool.Core
                 //That loses one bit of entropy, however is well within the security boundary of a properly sized nonce. Authenticode doesn't even use
                 //a nonce.
                 nonce[nonce.Length - 1] &= 0b01111111;
-                Marshal.Copy(nonce, 0, _nativeMemory, nonce.Length);
+                Marshal.Copy(nonce, 0, Nonce, nonce.Length);
             }
 
-            public IntPtr Nonce => _nativeMemory;
-            public uint Size => _nonceSize;
+            public IntPtr Nonce { get; }
+            public uint Size { get; }
 
             public void Dispose()
             {
-                Marshal.FreeCoTaskMem(_nativeMemory);
+                Marshal.FreeCoTaskMem(Nonce);
             }
         }
     }

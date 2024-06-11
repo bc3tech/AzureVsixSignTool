@@ -1,9 +1,11 @@
-﻿using System.IO;
-using Microsoft.Extensions.CommandLineUtils;
-using OpenVsixSignTool.Core;
-
-namespace OpenVsixSignTool
+﻿namespace OpenVsixSignTool
 {
+    using System.IO;
+
+    using Microsoft.Extensions.CommandLineUtils;
+
+    using OpenVsixSignTool.Core;
+
     internal class UnsignCommand
     {
         internal static class EXIT_CODES
@@ -28,19 +30,22 @@ namespace OpenVsixSignTool
                 _unsignConfiguration.Out.WriteLine("Specified file does not exist.");
                 return SignCommand.EXIT_CODES.INVALID_OPTIONS;
             }
+
             using (var package = OpcPackage.Open(vsixPathValue, OpcPackageFileMode.ReadWrite))
             {
                 var unsigned = false;
-                foreach (var signature in package.GetSignatures())
+                foreach (OpcSignature signature in package.GetSignatures())
                 {
                     unsigned = true;
                     signature.Remove();
                 }
+
                 if (!unsigned)
                 {
                     _unsignConfiguration.Out.WriteLine("Specified VSIX is not signed.");
                     return EXIT_CODES.FAILED;
                 }
+
                 _unsignConfiguration.Out.WriteLine("The unsigning operation is complete.");
                 return EXIT_CODES.SUCCESS;
             }

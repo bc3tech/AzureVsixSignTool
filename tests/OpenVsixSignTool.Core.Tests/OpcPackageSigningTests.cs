@@ -1,33 +1,33 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Packaging;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
-using System.Xml;
-using Xunit;
-
-namespace OpenVsixSignTool.Core.Tests
+﻿namespace OpenVsixSignTool.Core.Tests
 {
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.IO.Packaging;
+    using System.Linq;
+    using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Threading.Tasks;
+    using System.Xml;
+
+    using Xunit;
+
     public class OpcPackageSigningTests : IDisposable
     {
         private const string SamplePackage = @"sample\OpenVsixSignToolTest.vsix";
         private const string SamplePackageSigned = @"sample\OpenVsixSignToolTest-Signed.vsix";
         private readonly List<string> _shadowFiles = new List<string>();
 
-
         [Theory]
         [MemberData(nameof(RsaSigningTheories))]
         public async Task ShouldSignFileWithRsa(string pfxPath, HashAlgorithmName fileDigestAlgorithm, string expectedAlgorithm)
         {
             string path;
-            using (var package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
             {
-                var builder = package.CreateSignatureBuilder();
+                OpcPackageSignatureBuilder builder = package.CreateSignatureBuilder();
                 builder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
-                var result = await builder.SignAsync(
+                OpcSignature result = await builder.SignAsync(
                     new CertificateSignConfigurationSet
                     {
                         FileDigestAlgorithm = fileDigestAlgorithm,
@@ -44,9 +44,9 @@ namespace OpenVsixSignTool.Core.Tests
         public async Task ShouldSignFileWithEcdsa(string pfxPath, HashAlgorithmName fileDigestAlgorithm, string expectedAlgorithm)
         {
             string path;
-            using (var package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
             {
-                var builder = package.CreateSignatureBuilder();
+                OpcPackageSignatureBuilder builder = package.CreateSignatureBuilder();
                 builder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
                 await builder.SignAsync(
                     new CertificateSignConfigurationSet
@@ -87,11 +87,11 @@ namespace OpenVsixSignTool.Core.Tests
         [MemberData(nameof(RsaTimestampTheories))]
         public async Task ShouldTimestampFileWithRsa(string pfxPath, HashAlgorithmName timestampDigestAlgorithm)
         {
-            using (var package = ShadowCopyPackage(SamplePackage, out _, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out _, OpcPackageFileMode.ReadWrite))
             {
-                var signerBuilder = package.CreateSignatureBuilder();
+                OpcPackageSignatureBuilder signerBuilder = package.CreateSignatureBuilder();
                 signerBuilder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
-                var signature = await signerBuilder.SignAsync(
+                OpcSignature signature = await signerBuilder.SignAsync(
                     new CertificateSignConfigurationSet
                     {
                         FileDigestAlgorithm = HashAlgorithmName.SHA256,
@@ -99,8 +99,8 @@ namespace OpenVsixSignTool.Core.Tests
                         SigningCertificate = new X509Certificate2(pfxPath, "test")
                     }
                 );
-                var timestampBuilder = signature.CreateTimestampBuilder();
-                var result = await timestampBuilder.SignAsync(new Uri("http://timestamp.digicert.com"), timestampDigestAlgorithm);
+                OpcPackageTimestampBuilder timestampBuilder = signature.CreateTimestampBuilder();
+                TimestampResult result = await timestampBuilder.SignAsync(new Uri("http://timestamp.digicert.com"), timestampDigestAlgorithm);
                 Assert.Equal(TimestampResult.Success, result);
             }
         }
@@ -109,9 +109,9 @@ namespace OpenVsixSignTool.Core.Tests
         public async Task ShouldSupportReSigning()
         {
             string path;
-            using (var package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
             {
-                var signerBuilder = package.CreateSignatureBuilder();
+                OpcPackageSignatureBuilder signerBuilder = package.CreateSignatureBuilder();
                 signerBuilder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
                 await signerBuilder.SignAsync(
                     new CertificateSignConfigurationSet
@@ -122,9 +122,10 @@ namespace OpenVsixSignTool.Core.Tests
                     }
                 );
             }
+
             using (var package = OpcPackage.Open(path, OpcPackageFileMode.ReadWrite))
             {
-                var signerBuilder = package.CreateSignatureBuilder();
+                OpcPackageSignatureBuilder signerBuilder = package.CreateSignatureBuilder();
                 signerBuilder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
                 await signerBuilder.SignAsync(
                     new CertificateSignConfigurationSet
@@ -135,6 +136,7 @@ namespace OpenVsixSignTool.Core.Tests
                     }
                 );
             }
+
             using (var netfxPackage = Package.Open(path, FileMode.Open))
             {
                 var signatureManager = new PackageDigitalSignatureManager(netfxPackage);
@@ -150,9 +152,9 @@ namespace OpenVsixSignTool.Core.Tests
         public async Task ShouldSupportReSigningWithDifferentCertificate()
         {
             string path;
-            using (var package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
             {
-                var signerBuilder = package.CreateSignatureBuilder();
+                OpcPackageSignatureBuilder signerBuilder = package.CreateSignatureBuilder();
                 signerBuilder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
                 await signerBuilder.SignAsync(
                     new CertificateSignConfigurationSet
@@ -163,9 +165,10 @@ namespace OpenVsixSignTool.Core.Tests
                     }
                 );
             }
+
             using (var package = OpcPackage.Open(path, OpcPackageFileMode.ReadWrite))
             {
-                var signerBuilder = package.CreateSignatureBuilder();
+                OpcPackageSignatureBuilder signerBuilder = package.CreateSignatureBuilder();
                 signerBuilder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
                 await signerBuilder.SignAsync(
                     new CertificateSignConfigurationSet
@@ -176,6 +179,7 @@ namespace OpenVsixSignTool.Core.Tests
                     }
                 );
             }
+
             using (var netfxPackage = Package.Open(path, FileMode.Open))
             {
                 var signatureManager = new PackageDigitalSignatureManager(netfxPackage);
@@ -184,7 +188,8 @@ namespace OpenVsixSignTool.Core.Tests
                 {
                     Assert.True(false, "Missing parts");
                 }
-                var packageSignature = signatureManager.Signatures[0];
+
+                PackageDigitalSignature packageSignature = signatureManager.Signatures[0];
                 Assert.Equal(OpcKnownUris.SignatureAlgorithms.rsaSHA256.AbsoluteUri, packageSignature.Signature.SignedInfo.SignatureMethod);
             }
         }
@@ -193,9 +198,9 @@ namespace OpenVsixSignTool.Core.Tests
         public async Task ShouldRemoveSignature()
         {
             string path;
-            using (var package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
             {
-                var signerBuilder = package.CreateSignatureBuilder();
+                OpcPackageSignatureBuilder signerBuilder = package.CreateSignatureBuilder();
                 signerBuilder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
                 await signerBuilder.SignAsync(
                     new CertificateSignConfigurationSet
@@ -206,11 +211,12 @@ namespace OpenVsixSignTool.Core.Tests
                     }
                 );
             }
+
             using (var package = OpcPackage.Open(path, OpcPackageFileMode.ReadWrite))
             {
                 var signatures = package.GetSignatures().ToList();
                 Assert.Equal(1, signatures.Count);
-                var signature = signatures[0];
+                OpcSignature signature = signatures[0];
                 signature.Remove();
                 Assert.Null(signature.Part);
                 Assert.Throws<InvalidOperationException>(() => signature.CreateTimestampBuilder());
@@ -244,6 +250,7 @@ namespace OpenVsixSignTool.Core.Tests
             {
                 _shadowFiles.ForEach(File.Delete);
             }
+
             CleanUpShadows();
         }
     }

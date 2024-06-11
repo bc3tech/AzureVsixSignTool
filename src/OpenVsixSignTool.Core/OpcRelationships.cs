@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Xml.Linq;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Collections;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Security.Cryptography;
+    using System.Xml.Linq;
+
     public class OpcRelationship : IEquatable<OpcRelationship>
     {
         public Uri Target { get; }
@@ -15,20 +15,20 @@ namespace OpenVsixSignTool.Core
 
         public OpcRelationship(Uri target, string id, Uri type)
         {
-            Target = target;
-            Id = id;
-            Type = type;
+            this.Target = target;
+            this.Id = id;
+            this.Type = type;
         }
 
         public OpcRelationship(Uri target, Uri type)
         {
-            Target = target;
-            Type = type;
+            this.Target = target;
+            this.Type = type;
         }
 
         public bool Equals(OpcRelationship other)
         {
-            return !ReferenceEquals(other, null) && Target == other.Target && Type == other.Type && Id == other.Id;
+            return other is object && this.Target == other.Target && this.Type == other.Type && this.Id == other.Id;
         }
 
         public override bool Equals(object obj)
@@ -37,10 +37,11 @@ namespace OpenVsixSignTool.Core
             {
                 return Equals(rel);
             }
+
             return false;
         }
 
-        public override int GetHashCode() => Target.GetHashCode() ^ Type.GetHashCode();
+        public override int GetHashCode() => this.Target.GetHashCode() ^ this.Type.GetHashCode();
     }
 
     public class OpcRelationships : IList<OpcRelationship>
@@ -48,17 +49,17 @@ namespace OpenVsixSignTool.Core
         private static readonly XNamespace OpcRelationshipNamespace = "http://schemas.openxmlformats.org/package/2006/relationships";
         private readonly List<OpcRelationship> _relationships = new List<OpcRelationship>();
 
-
         internal OpcRelationships(Uri documentUri, XDocument document, bool isReadOnly)
         {
-            IsReadOnly = isReadOnly;
-            DocumentUri = documentUri;
-            var relationships = document?.Root?.Elements(OpcRelationshipNamespace + "Relationship");
+            this.IsReadOnly = isReadOnly;
+            this.DocumentUri = documentUri;
+            IEnumerable<XElement> relationships = document?.Root?.Elements(OpcRelationshipNamespace + "Relationship");
             if (relationships == null)
             {
                 return;
             }
-            foreach (var relationship in relationships)
+
+            foreach (XElement relationship in relationships)
             {
                 var target = relationship.Attribute("Target")?.Value;
                 var id = relationship.Attribute("Id")?.Value;
@@ -67,6 +68,7 @@ namespace OpenVsixSignTool.Core
                 {
                     continue;
                 }
+
                 _relationships.Add(new OpcRelationship(new Uri(target, UriKind.Relative), id,
                     new Uri(type, UriKind.RelativeOrAbsolute)));
             }
@@ -74,15 +76,15 @@ namespace OpenVsixSignTool.Core
 
         internal OpcRelationships(Uri documentUri, bool isReadOnly)
         {
-            IsReadOnly = isReadOnly;
-            DocumentUri = documentUri;
+            this.IsReadOnly = isReadOnly;
+            this.DocumentUri = documentUri;
         }
 
         public XDocument ToXml()
         {
             var document = new XDocument();
             var root = new XElement(OpcRelationshipNamespace + "Relationships");
-            foreach (var relationship in _relationships)
+            foreach (OpcRelationship relationship in _relationships)
             {
                 var element = new XElement(OpcRelationshipNamespace + "Relationship");
                 element.SetAttributeValue("Target", relationship.Target.ToQualifiedPath());
@@ -90,6 +92,7 @@ namespace OpenVsixSignTool.Core
                 element.SetAttributeValue("Type", relationship.Type);
                 root.Add(element);
             }
+
             document.Add(root);
             return document;
         }
@@ -100,14 +103,13 @@ namespace OpenVsixSignTool.Core
 
         internal Uri DocumentUri { get; }
 
-
         public OpcRelationship this[int index]
         {
             get => _relationships[index];
             set
             {
                 AssertNotReadOnly();
-                IsDirty = true;
+                this.IsDirty = true;
                 AssignRelationshipId(value);
                 _relationships[index] = value;
             }
@@ -120,7 +122,7 @@ namespace OpenVsixSignTool.Core
         public void Insert(int index, OpcRelationship item)
         {
             AssertNotReadOnly();
-            IsDirty = true;
+            this.IsDirty = true;
             AssignRelationshipId(item);
             _relationships.Insert(index, item);
         }
@@ -128,14 +130,14 @@ namespace OpenVsixSignTool.Core
         public void RemoveAt(int index)
         {
             AssertNotReadOnly();
-            IsDirty = true;
+            this.IsDirty = true;
             _relationships.RemoveAt(index);
         }
 
         public void Add(OpcRelationship item)
         {
             AssertNotReadOnly();
-            IsDirty = true;
+            this.IsDirty = true;
             AssignRelationshipId(item);
             _relationships.Add(item);
         }
@@ -143,7 +145,7 @@ namespace OpenVsixSignTool.Core
         public void Clear()
         {
             AssertNotReadOnly();
-            IsDirty = true;
+            this.IsDirty = true;
             _relationships.Clear();
         }
 
@@ -154,7 +156,7 @@ namespace OpenVsixSignTool.Core
         public bool Remove(OpcRelationship item)
         {
             AssertNotReadOnly();
-            return IsDirty = _relationships.Remove(item);
+            return this.IsDirty = _relationships.Remove(item);
         }
 
         public IEnumerator<OpcRelationship> GetEnumerator() => _relationships.GetEnumerator();
@@ -163,7 +165,7 @@ namespace OpenVsixSignTool.Core
 
         private void AssertNotReadOnly()
         {
-            if (IsReadOnly)
+            if (this.IsReadOnly)
             {
                 throw new InvalidOperationException("Cannot update relationships in a read only package. Please open the package in write mode.");
             }
@@ -175,6 +177,7 @@ namespace OpenVsixSignTool.Core
             {
                 return;
             }
+
             using (var rng = RandomNumberGenerator.Create())
             {
                 var data = new byte[4];
@@ -187,6 +190,7 @@ namespace OpenVsixSignTool.Core
                     {
                         continue;
                     }
+
                     relationship.Id = id;
                     break;
                 }

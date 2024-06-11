@@ -1,10 +1,11 @@
-﻿using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
-using Xunit;
-
-namespace OpenVsixSignTool.Core.Tests
+﻿namespace OpenVsixSignTool.Core.Tests
 {
+    using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Threading.Tasks;
+
+    using Xunit;
+
     public class CertificateSigningContextTests
     {
         [Theory]

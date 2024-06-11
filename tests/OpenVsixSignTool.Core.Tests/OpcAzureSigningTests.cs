@@ -1,14 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Packaging;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
-using Xunit;
-
-namespace OpenVsixSignTool.Core.Tests
+﻿namespace OpenVsixSignTool.Core.Tests
 {
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.IO.Packaging;
+    using System.Linq;
+    using System.Security.Cryptography;
+    using System.Threading.Tasks;
+
+    using Xunit;
+
     public class OpcAzureSigningTests
     {
         private const string SamplePackage = @"sample\OpenVsixSignToolTest.vsix";
@@ -17,25 +18,26 @@ namespace OpenVsixSignTool.Core.Tests
         [AzureFact]
         public async Task ShouldSignWithAzureCertificate()
         {
-            var creds = TestAzureCredentials.Credentials;
+            TestAzureCredentials creds = TestAzureCredentials.Credentials;
             string path;
-            using (var package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
             {
-                var builder = package.CreateSignatureBuilder();
+                OpcPackageSignatureBuilder builder = package.CreateSignatureBuilder();
                 builder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
-                var signature = await builder.SignAsync(
+                OpcSignature signature = await builder.SignAsync(
                     new AzureKeyVaultSignConfigurationSet
                     {
                         FileDigestAlgorithm = HashAlgorithmName.SHA256,
                         PkcsDigestAlgorithm = HashAlgorithmName.SHA256,
                         AzureClientId = creds.ClientId,
                         AzureClientSecret = creds.ClientSecret,
-                        AzureKeyVaultUrl = creds.AzureKeyVaultUrl,
+                        AzureKeyVaultUrl = Uri.TryCreate(creds.AzureKeyVaultUrl, UriKind.Absolute, out Uri u) ? u : throw new ArgumentException(),
                         AzureKeyVaultCertificateName = creds.AzureKeyVaultCertificateName
                     }
                 );
                 Assert.NotNull(signature);
             }
+
             using (var netfxPackage = Package.Open(path, FileMode.Open))
             {
                 var signatureManager = new PackageDigitalSignatureManager(netfxPackage);
@@ -44,7 +46,8 @@ namespace OpenVsixSignTool.Core.Tests
                 {
                     Assert.True(false, "Missing parts");
                 }
-                var packageSignature = signatureManager.Signatures[0];
+
+                PackageDigitalSignature packageSignature = signatureManager.Signatures[0];
                 var expectedAlgorithm = OpcKnownUris.SignatureAlgorithms.rsaSHA256.AbsoluteUri;
                 Assert.Equal(expectedAlgorithm, packageSignature.Signature.SignedInfo.SignatureMethod);
             }
@@ -53,28 +56,29 @@ namespace OpenVsixSignTool.Core.Tests
         [AzureFact]
         public async Task ShouldSignWithAzureCertificateAndTimestamp()
         {
-            var creds = TestAzureCredentials.Credentials;
+            TestAzureCredentials creds = TestAzureCredentials.Credentials;
             string path;
-            using (var package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
+            using (OpcPackage package = ShadowCopyPackage(SamplePackage, out path, OpcPackageFileMode.ReadWrite))
             {
-                var builder = package.CreateSignatureBuilder();
+                OpcPackageSignatureBuilder builder = package.CreateSignatureBuilder();
                 builder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
-                var signature = await builder.SignAsync(
+                OpcSignature signature = await builder.SignAsync(
                     new AzureKeyVaultSignConfigurationSet
                     {
                         FileDigestAlgorithm = HashAlgorithmName.SHA256,
                         PkcsDigestAlgorithm = HashAlgorithmName.SHA256,
                         AzureClientId = creds.ClientId,
                         AzureClientSecret = creds.ClientSecret,
-                        AzureKeyVaultUrl = creds.AzureKeyVaultUrl,
+                        AzureKeyVaultUrl = Uri.TryCreate(creds.AzureKeyVaultUrl, UriKind.Absolute, out Uri u) ? u : throw new ArgumentException(),
                         AzureKeyVaultCertificateName = creds.AzureKeyVaultCertificateName
                     }
                 );
                 Assert.NotNull(signature);
-                var timestampBuilder = signature.CreateTimestampBuilder();
+                OpcPackageTimestampBuilder timestampBuilder = signature.CreateTimestampBuilder();
                 var timestampServer = new Uri("http://timestamp.digicert.com", UriKind.Absolute);
-                var result = await timestampBuilder.SignAsync(timestampServer, HashAlgorithmName.SHA256);
+                TimestampResult result = await timestampBuilder.SignAsync(timestampServer, HashAlgorithmName.SHA256);
             }
+
             using (var netfxPackage = Package.Open(path, FileMode.Open))
             {
                 var signatureManager = new PackageDigitalSignatureManager(netfxPackage);
@@ -83,7 +87,8 @@ namespace OpenVsixSignTool.Core.Tests
                 {
                     Assert.True(false, "Missing parts");
                 }
-                var packageSignature = signatureManager.Signatures[0];
+
+                PackageDigitalSignature packageSignature = signatureManager.Signatures[0];
                 var expectedAlgorithm = OpcKnownUris.SignatureAlgorithms.rsaSHA256.AbsoluteUri;
                 Assert.Equal(expectedAlgorithm, packageSignature.Signature.SignedInfo.SignatureMethod);
             }
@@ -104,6 +109,7 @@ namespace OpenVsixSignTool.Core.Tests
             {
                 _shadowFiles.ForEach(File.Delete);
             }
+
             CleanUpShadows();
         }
     }

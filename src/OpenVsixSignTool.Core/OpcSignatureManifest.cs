@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Collections.Generic;
+
     internal class OpcSignatureManifest
     {
         private readonly List<OpcPartDigest> _digests;
@@ -15,13 +15,14 @@ namespace OpenVsixSignTool.Core
         public static OpcSignatureManifest Build(ISigningContext context, HashSet<OpcPart> parts)
         {
             var digests = new List<OpcPartDigest>(parts.Count);
-            foreach (var part in parts)
+            foreach (OpcPart part in parts)
             {
-                var (digest, identifier) = OpcPartDigestProcessor.Digest(part, context.FileDigestAlgorithmName);
+                (byte[] digest, Uri identifier) = OpcPartDigestProcessor.Digest(part, context.FileDigestAlgorithmName);
                 var builder = new UriBuilder(part.Uri);
                 builder.Query = "ContentType=" + part.ContentType;
                 digests.Add(new OpcPartDigest(builder.Uri, identifier, digest));
             }
+
             return new OpcSignatureManifest(digests);
         }
 
