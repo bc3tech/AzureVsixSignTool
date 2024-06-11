@@ -1,6 +1,8 @@
 ﻿using Microsoft.Azure.KeyVault;
 using Microsoft.Extensions.CommandLineUtils;
+
 using OpenVsixSignTool.Core;
+
 using System;
 using System.IO;
 using System.Linq;
@@ -115,7 +117,7 @@ namespace OpenVsixSignTool
                 certificate, GetSigningKeyFromCertificate(certificate));
         }
 
-        internal async Task<int> SignAzure(CommandOption azureKeyVaultUrl, CommandOption azureKeyVaultClientId,
+        internal async Task<int> SignAzure(CommandOption azureKeyVaultUrl, CommandOption azureKeyVaultTenantId, CommandOption azureKeyVaultClientId,
             CommandOption azureKeyVaultClientSecret, CommandOption azureKeyVaultCertificateName, CommandOption azureKeyVaultAccessToken, CommandOption force,
             CommandOption fileDigest, CommandOption timestampUrl, CommandOption timestampAlgorithm, CommandArgument vsixPath)
         {
@@ -129,6 +131,12 @@ namespace OpenVsixSignTool
             // we only need the client id/secret if we don't have an access token
             if (!azureKeyVaultAccessToken.HasValue())
             {
+                if (!azureKeyVaultTenantId.HasValue())
+                {
+                    _signCommandApplication.Out.WriteLine("The Azure Key Vault Tenant ID or Access Token must be specified for Azure signing.");
+                    return EXIT_CODES.INVALID_OPTIONS;
+                }
+
                 if (!azureKeyVaultClientId.HasValue())
                 {
                     _signCommandApplication.Out.WriteLine("The Azure Key Vault Client ID or Access Token must be specified for Azure signing.");
@@ -192,6 +200,7 @@ namespace OpenVsixSignTool
             {
                 AzureKeyVaultUrl = azureKeyVaultUrl.Value(),
                 AzureKeyVaultCertificateName = azureKeyVaultCertificateName.Value(),
+                AzureTenantId = azureKeyVaultTenantId.Value(),
                 AzureClientId = azureKeyVaultClientId.Value(),
                 AzureAccessToken = azureKeyVaultAccessToken.Value(),
                 AzureClientSecret = azureKeyVaultClientSecret.Value(),
@@ -209,8 +218,8 @@ namespace OpenVsixSignTool
                     _signCommandApplication.Out.WriteLine("Failed to get configuration from Azure Key Vault.");
                     return EXIT_CODES.FAILED;
             }
-            var context = new KeyVaultContext(materialized.Client, materialized.KeyId, materialized.PublicCertificate);
-            using (var keyVault = new RSAKeyVault(context))
+
+            using (var keyVault = new RSAKeyVaultProvider.RSAKeyVault(new RSAKeyVaultProvider.KeyVaultContext(materialized.Credentials, materialized.KeyId, materialized.PublicCertificate)))
             {
                 return await PerformSignOnVsixAsync(
                     vsixPathValue,

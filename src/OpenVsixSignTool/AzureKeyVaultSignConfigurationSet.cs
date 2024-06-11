@@ -8,5 +8,6 @@ namespace OpenVsixSignTool
         public string AzureKeyVaultUrl { get; set; }
         public string AzureKeyVaultCertificateName { get; set; }
         public string AzureAccessToken { get; set; }
+        public string AzureTenantId { get; set; }
     }
 }

@@ -1,7 +1,9 @@
-﻿using Microsoft.Azure.KeyVault;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using System.Security.Cryptography.X509Certificates;
+﻿using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+
+using Azure.Identity;
+using Azure.Security.KeyVault.Certificates;
+using Azure.Security.KeyVault.Keys.Cryptography;
 
 namespace OpenVsixSignTool
 {
@@ -9,34 +11,12 @@ namespace OpenVsixSignTool
     {
         public async Task<ErrorOr<AzureKeyVaultMaterializedConfiguration>> Materialize(AzureKeyVaultSignConfigurationSet configuration)
         {
-            async Task<string> Authenticate(string authority, string resource, string scope)
-            {
-                if (!string.IsNullOrWhiteSpace(configuration.AzureAccessToken))
-                {
-                    return configuration.AzureAccessToken;
-                }
+            var creds = new ClientSecretCredential(configuration.AzureTenantId, configuration.AzureClientId, configuration.AzureClientSecret);
 
-                var context = new AuthenticationContext(authority);
-                ClientCredential credential = new ClientCredential(configuration.AzureClientId, configuration.AzureClientSecret);
-
-                try
-                {
-                    var result = await context.AcquireTokenAsync(resource, credential);
-                    return result.AccessToken;
-                }
-                catch (AdalServiceException e) when (e.StatusCode >= 400 && e.StatusCode < 500)
-                {
-                    return null;
-                }
-            }
-
-            var vault = new KeyVaultClient(Authenticate);
-            var azureCertificate = await vault.GetCertificateAsync(configuration.AzureKeyVaultUrl, configuration.AzureKeyVaultCertificateName);
-                
-            var certificate = new X509Certificate2(azureCertificate.Cer);
-            var keyId = azureCertificate.KeyIdentifier;
-            return new AzureKeyVaultMaterializedConfiguration(vault, certificate, keyId);
-
+            var certClient = new CertificateClient(new System.Uri(configuration.AzureKeyVaultUrl), creds);
+            KeyVaultCertificateWithPolicy azureCertificate = await certClient.GetCertificateAsync(configuration.AzureKeyVaultCertificateName);
+            var x509Certificate = new X509Certificate2(azureCertificate.Cer);
+            return new AzureKeyVaultMaterializedConfiguration(creds, azureCertificate.KeyId, x509Certificate);
         }
     }
 }

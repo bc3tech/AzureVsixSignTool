@@ -21,6 +21,7 @@ namespace OpenVsixSignTool
                     var file = signConfiguration.Argument("file", "A to the VSIX file.");
 
                     var azureKeyVaultUrl = signConfiguration.Option("-kvu | --azure-key-vault-url", "The URL to an Azure Key Vault.", CommandOptionType.SingleValue);
+                    var azureKeyVaultTenantId = signConfiguration.Option("-kvt | --azure-key-vault-tenant-id", "The Tenant ID to authenticate to the Azure Key Vault.", CommandOptionType.SingleValue);
                     var azureKeyVaultClientId = signConfiguration.Option("-kvi | --azure-key-vault-client-id", "The Client ID to authenticate to the Azure Key Vault.", CommandOptionType.SingleValue);
                     var azureKeyVaultClientSecret = signConfiguration.Option("-kvs | --azure-key-vault-client-secret", "The Client Secret to authenticate to the Azure Key Vault.", CommandOptionType.SingleValue);
                     var azureKeyVaultCertificateName = signConfiguration.Option("-kvc | --azure-key-vault-certificate", "The name of the certificate in Azure Key Vault.", CommandOptionType.SingleValue);
@@ -35,7 +36,7 @@ namespace OpenVsixSignTool
                         }
                         else
                         {
-                            return sign.SignAzure(azureKeyVaultUrl, azureKeyVaultClientId, azureKeyVaultClientSecret,
+                            return sign.SignAzure(azureKeyVaultUrl, azureKeyVaultTenantId, azureKeyVaultClientId, azureKeyVaultClientSecret,
                                 azureKeyVaultCertificateName, azureKeyVaultAccessToken, force, fileDigest, timestamp, timestampAlgorithm, file);
                         }
                     });
