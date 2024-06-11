@@ -1,14 +1,16 @@
-﻿using Microsoft.Extensions.CommandLineUtils;
-using OpenVsixSignTool.Core;
-using System;
-using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
-
-namespace OpenVsixSignTool
+﻿namespace OpenVsixSignTool
 {
+    using Microsoft.Extensions.CommandLineUtils;
+
+    using OpenVsixSignTool.Core;
+
+    using System;
+    using System.IO;
+    using System.Linq;
+    using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Threading.Tasks;
+
     class SignCommand
     {
         internal static class EXIT_CODES
@@ -42,6 +44,7 @@ namespace OpenVsixSignTool
                 _signCommandApplication.ShowHelp();
                 return Task.FromResult(EXIT_CODES.INVALID_OPTIONS);
             }
+
             X509Certificate2 certificate;
             if (sha1.HasValue())
             {
@@ -60,6 +63,7 @@ namespace OpenVsixSignTool
                     _signCommandApplication.Out.WriteAsync("Specified PFX file does not exist.");
                     return Task.FromResult(EXIT_CODES.INVALID_OPTIONS);
                 }
+
                 if (!password.HasValue())
                 {
                     certificate = new X509Certificate2(pfxFilePath);
@@ -69,6 +73,7 @@ namespace OpenVsixSignTool
                     certificate = new X509Certificate2(pfxFilePath, password.Value());
                 }
             }
+
             Uri timestampServer = null;
             if (timestampUrl.HasValue())
             {
@@ -77,20 +82,23 @@ namespace OpenVsixSignTool
                     _signCommandApplication.Out.WriteLine("Specified timestamp URL is invalid.");
                     return Task.FromResult(EXIT_CODES.FAILED);
                 }
+
                 if (timestampServer.Scheme != Uri.UriSchemeHttp && timestampServer.Scheme != Uri.UriSchemeHttps)
                 {
                     _signCommandApplication.Out.WriteLine("Specified timestamp URL is invalid.");
                     return Task.FromResult(EXIT_CODES.FAILED);
                 }
             }
+
             var vsixPathValue = vsixPath.Value;
             if (!File.Exists(vsixPathValue))
             {
                 _signCommandApplication.Out.WriteLine("Specified file does not exist.");
                 return Task.FromResult(EXIT_CODES.FAILED);
             }
+
             HashAlgorithmName fileDigestAlgorithm, timestampDigestAlgorithm;
-            var fileDigestResult = AlgorithmFromInput(fileDigest.HasValue() ? fileDigest.Value() : null);
+            HashAlgorithmName? fileDigestResult = AlgorithmFromInput(fileDigest.HasValue() ? fileDigest.Value() : null);
             if (fileDigestResult == null)
             {
                 _signCommandApplication.Out.WriteLine("Specified file digest algorithm is not supported.");
@@ -100,7 +108,8 @@ namespace OpenVsixSignTool
             {
                 fileDigestAlgorithm = fileDigestResult.Value;
             }
-            var timestampDigestResult = AlgorithmFromInput(timestampAlgorithm.HasValue() ? timestampAlgorithm.Value() : null);
+
+            HashAlgorithmName? timestampDigestResult = AlgorithmFromInput(timestampAlgorithm.HasValue() ? timestampAlgorithm.Value() : null);
             if (timestampDigestResult == null)
             {
                 _signCommandApplication.Out.WriteLine("Specified timestamp digest algorithm is not supported.");
@@ -110,12 +119,13 @@ namespace OpenVsixSignTool
             {
                 timestampDigestAlgorithm = timestampDigestResult.Value;
             }
+
             return PerformSignOnVsixAsync(vsixPathValue, force.HasValue(), timestampServer, fileDigestAlgorithm, timestampDigestAlgorithm, certificate);
         }
 
-        internal async Task<int> SignAzure(CommandOption azureKeyVaultUrl, CommandOption azureKeyVaultClientId,
-            CommandOption azureKeyVaultClientSecret, CommandOption azureKeyVaultCertificateName, CommandOption azureKeyVaultAccessToken, CommandOption force,
-            CommandOption fileDigest, CommandOption timestampUrl, CommandOption timestampAlgorithm, CommandArgument vsixPath)
+        internal async Task<int> SignAzure(CommandOption azureKeyVaultUrl, CommandOption azureKeyVaultTenantId,
+            CommandOption azureKeyVaultClientId, CommandOption azureKeyVaultClientSecret, CommandOption azureKeyVaultCertificateName, CommandOption azureKeyVaultAccessToken,
+            CommandOption force, CommandOption fileDigest, CommandOption timestampUrl, CommandOption timestampAlgorithm, CommandArgument vsixPath)
         {
             if (!azureKeyVaultUrl.HasValue())
             {
@@ -123,10 +133,15 @@ namespace OpenVsixSignTool
                 return EXIT_CODES.INVALID_OPTIONS;
             }
 
-
             // we only need the client id/secret if we don't have an access token
             if (!azureKeyVaultAccessToken.HasValue())
             {
+                if (!azureKeyVaultTenantId.HasValue())
+                {
+                    _signCommandApplication.Out.WriteLine("The Azure Key Vault Tenant ID or Access Token must be specified for Azure signing.");
+                    return EXIT_CODES.INVALID_OPTIONS;
+                }
+
                 if (!azureKeyVaultClientId.HasValue())
                 {
                     _signCommandApplication.Out.WriteLine("The Azure Key Vault Client ID or Access Token must be specified for Azure signing.");
@@ -145,6 +160,7 @@ namespace OpenVsixSignTool
                 _signCommandApplication.Out.WriteLine("The Azure Key Vault Client Certificate Name must be specified for Azure signing.");
                 return EXIT_CODES.INVALID_OPTIONS;
             }
+
             Uri timestampServer = null;
             if (timestampUrl.HasValue())
             {
@@ -153,20 +169,23 @@ namespace OpenVsixSignTool
                     _signCommandApplication.Out.WriteLine("Specified timestamp URL is invalid.");
                     return EXIT_CODES.FAILED;
                 }
+
                 if (timestampServer.Scheme != Uri.UriSchemeHttp && timestampServer.Scheme != Uri.UriSchemeHttps)
                 {
                     _signCommandApplication.Out.WriteLine("Specified timestamp URL is invalid.");
                     return EXIT_CODES.FAILED;
                 }
             }
+
             var vsixPathValue = vsixPath.Value;
             if (!File.Exists(vsixPathValue))
             {
                 _signCommandApplication.Out.WriteLine("Specified file does not exist.");
                 return EXIT_CODES.FAILED;
             }
+
             HashAlgorithmName fileDigestAlgorithm, timestampDigestAlgorithm;
-            var fileDigestResult = AlgorithmFromInput(fileDigest.HasValue() ? fileDigest.Value() : null);
+            HashAlgorithmName? fileDigestResult = AlgorithmFromInput(fileDigest.HasValue() ? fileDigest.Value() : null);
             if (fileDigestResult == null)
             {
                 _signCommandApplication.Out.WriteLine("Specified file digest algorithm is not supported.");
@@ -176,7 +195,8 @@ namespace OpenVsixSignTool
             {
                 fileDigestAlgorithm = fileDigestResult.Value;
             }
-            var timestampDigestResult = AlgorithmFromInput(timestampAlgorithm.HasValue() ? timestampAlgorithm.Value() : null);
+
+            HashAlgorithmName? timestampDigestResult = AlgorithmFromInput(timestampAlgorithm.HasValue() ? timestampAlgorithm.Value() : null);
             if (timestampDigestResult == null)
             {
                 _signCommandApplication.Out.WriteLine("Specified timestamp digest algorithm is not supported.");
@@ -186,6 +206,7 @@ namespace OpenVsixSignTool
             {
                 timestampDigestAlgorithm = timestampDigestResult.Value;
             }
+
             return await PerformAzureSignOnVsixAsync(
                 vsixPathValue,
                 force.HasValue(),
@@ -193,6 +214,7 @@ namespace OpenVsixSignTool
                 fileDigestAlgorithm,
                 timestampDigestAlgorithm,
                 azureKeyVaultUrl.Value(),
+                azureKeyVaultTenantId.Value(),
                 azureKeyVaultClientId.Value(),
                 azureKeyVaultCertificateName.Value(),
                 azureKeyVaultClientSecret.Value(),
@@ -212,7 +234,8 @@ namespace OpenVsixSignTool
                     _signCommandApplication.Out.WriteLine("The VSIX is already signed.");
                     return EXIT_CODES.FAILED;
                 }
-                var signBuilder = package.CreateSignatureBuilder();
+
+                OpcPackageSignatureBuilder signBuilder = package.CreateSignatureBuilder();
                 signBuilder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
                 var signingConfiguration = new CertificateSignConfigurationSet
                 {
@@ -221,16 +244,17 @@ namespace OpenVsixSignTool
                     SigningCertificate = certificate
                 };
 
-                var signature = await signBuilder.SignAsync(signingConfiguration);
+                OpcSignature signature = await signBuilder.SignAsync(signingConfiguration);
                 if (timestampUri != null)
                 {
-                    var timestampBuilder = signature.CreateTimestampBuilder();
-                    var result = await timestampBuilder.SignAsync(timestampUri, timestampDigestAlgorithm);
+                    OpcPackageTimestampBuilder timestampBuilder = signature.CreateTimestampBuilder();
+                    TimestampResult result = await timestampBuilder.SignAsync(timestampUri, timestampDigestAlgorithm);
                     if (result == TimestampResult.Failed)
                     {
                         return EXIT_CODES.FAILED;
                     }
                 }
+
                 _signCommandApplication.Out.WriteLine("The signing operation is complete.");
                 return EXIT_CODES.SUCCESS;
             }
@@ -238,7 +262,7 @@ namespace OpenVsixSignTool
 
         private async Task<int> PerformAzureSignOnVsixAsync(string vsixPath, bool force,
             Uri timestampUri, HashAlgorithmName fileDigestAlgorithm, HashAlgorithmName timestampDigestAlgorithm,
-            string azureUri, string azureClientId, string azureClientCertificateName, string azureClientSecret, string azureAccessToken
+            string azureUri, string azureTenantId, string azureClientId, string azureClientCertificateName, string azureClientSecret, string azureAccessToken
             )
         {
             using (var package = OpcPackage.Open(vsixPath, OpcPackageFileMode.ReadWrite))
@@ -248,29 +272,32 @@ namespace OpenVsixSignTool
                     _signCommandApplication.Out.WriteLine("The VSIX is already signed.");
                     return EXIT_CODES.FAILED;
                 }
-                var signBuilder = package.CreateSignatureBuilder();
+
+                OpcPackageSignatureBuilder signBuilder = package.CreateSignatureBuilder();
                 signBuilder.EnqueueNamedPreset<VSIXSignatureBuilderPreset>();
                 var signingConfiguration = new AzureKeyVaultSignConfigurationSet
                 {
                     FileDigestAlgorithm = fileDigestAlgorithm,
                     PkcsDigestAlgorithm = fileDigestAlgorithm,
+                    AzureTenantId = azureTenantId,
                     AzureClientId = azureClientId,
                     AzureClientSecret = azureClientSecret,
                     AzureKeyVaultCertificateName = azureClientCertificateName,
-                    AzureKeyVaultUrl = azureUri,
+                    AzureKeyVaultUrl = Uri.TryCreate(azureUri, UriKind.Absolute, out Uri u) ? u : throw new ArgumentException("Key Vault URI is not a valid URI"),
                     AzureAccessToken = azureAccessToken
                 };
 
-                var signature = await signBuilder.SignAsync(signingConfiguration);
+                OpcSignature signature = await signBuilder.SignAsync(signingConfiguration);
                 if (timestampUri != null)
                 {
-                    var timestampBuilder = signature.CreateTimestampBuilder();
-                    var result = await timestampBuilder.SignAsync(timestampUri, timestampDigestAlgorithm);
+                    OpcPackageTimestampBuilder timestampBuilder = signature.CreateTimestampBuilder();
+                    TimestampResult result = await timestampBuilder.SignAsync(timestampUri, timestampDigestAlgorithm);
                     if (result == TimestampResult.Failed)
                     {
                         return EXIT_CODES.FAILED;
                     }
                 }
+
                 _signCommandApplication.Out.WriteLine("The signing operation is complete.");
                 return EXIT_CODES.SUCCESS;
             }
@@ -300,11 +327,12 @@ namespace OpenVsixSignTool
             using (var store = new X509Store(StoreName.My, StoreLocation.CurrentUser))
             {
                 store.Open(OpenFlags.OpenExistingOnly | OpenFlags.ReadOnly);
-                var certificates = store.Certificates.Find(X509FindType.FindByThumbprint, sha1, false);
+                X509Certificate2Collection certificates = store.Certificates.Find(X509FindType.FindByThumbprint, sha1, false);
                 if (certificates.Count == 0)
                 {
                     return null;
                 }
+
                 return certificates[0];
             }
         }

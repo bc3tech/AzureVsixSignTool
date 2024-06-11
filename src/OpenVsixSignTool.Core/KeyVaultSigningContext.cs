@@ -1,11 +1,12 @@
-﻿using Microsoft.Azure.KeyVault;
-using System;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
-
-namespace OpenVsixSignTool.Core
+﻿namespace OpenVsixSignTool.Core
 {
+    using System;
+    using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Threading.Tasks;
+
+    using Azure.Security.KeyVault.Keys.Cryptography;
+
     /// <summary>
     /// A signing context used for signing packages with Azure Key Vault Keys.
     /// </summary>
@@ -18,7 +19,7 @@ namespace OpenVsixSignTool.Core
         /// </summary>
         public KeyVaultSigningContext(AzureKeyVaultMaterializedConfiguration configuration)
         {
-            ContextCreationTime = DateTimeOffset.Now;
+            this.ContextCreationTime = DateTimeOffset.Now;
             _configuration = configuration;
         }
 
@@ -42,19 +43,20 @@ namespace OpenVsixSignTool.Core
         /// </summary>
         public SigningAlgorithm SignatureAlgorithm { get; } = SigningAlgorithm.RSA;
 
-        public Uri XmlDSigIdentifier => SignatureAlgorithmTranslator.SignatureAlgorithmToXmlDSigUri(SignatureAlgorithm, _configuration.PkcsDigestAlgorithm);
+        public Uri XmlDSigIdentifier => SignatureAlgorithmTranslator.SignatureAlgorithmToXmlDSigUri(this.SignatureAlgorithm, _configuration.PkcsDigestAlgorithm);
 
         public async Task<byte[]> SignDigestAsync(byte[] digest)
         {
-            var client = _configuration.Client;
-            var algorithm = SignatureAlgorithmTranslator.SignatureAlgorithmToJwsAlgId(SignatureAlgorithm, _configuration.PkcsDigestAlgorithm);
-            var signature = await client.SignAsync(_configuration.Key.KeyIdentifier.Identifier, algorithm, digest);
-            return signature.Result;
+            CryptographyClient client = _configuration.Client;
+            var algorithm = SignatureAlgorithmTranslator.SignatureAlgorithmToJwsAlgId(this.SignatureAlgorithm, _configuration.PkcsDigestAlgorithm);
+
+            SignResult encrypted = await client.SignDataAsync(algorithm, digest);
+            return encrypted.Signature;
         }
 
         public Task<bool> VerifyDigestAsync(byte[] digest, byte[] signature)
         {
-            using (var publicKey = Certificate.GetRSAPublicKey())
+            using (RSA publicKey = this.Certificate.GetRSAPublicKey())
             {
                 return Task.FromResult(publicKey.VerifyHash(digest, signature, _configuration.PkcsDigestAlgorithm, RSASignaturePadding.Pkcs1));
             }
